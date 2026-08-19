@@ -1,0 +1,7 @@
+output/
+*.stl
+!examples/*.stl
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/

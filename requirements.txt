@@ -1,0 +1,9 @@
+# Core geometry stack.
+numpy>=1.24
+trimesh>=4.0
+manifold3d>=2.3        # exact boolean kernel - required for watertight results
+scipy>=1.10            # trimesh uses it for connectivity / graph queries
+networkx>=3.0          # trimesh uses it for cross-sections
+
+# Tests only
+pytest>=7.0
