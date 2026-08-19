@@ -8,12 +8,21 @@ package thumbnail that slicers show in their file pickers.
 Two-tone pots: pass ``accent_mask`` (a boolean per face) and those faces
 get the accent material - the CLI uses it to color the rim.
 
-Pass ``printer`` (a key from :mod:`flowerpot.printers`) to also embed the
-OrcaSlicer / Bambu Studio / Creality Print project payload - machine,
-process and filament settings plus plate assignment - which is what the
-"Print Settings" upload path on Creality Cloud requires.  The geometry
-stays inline in the standard ``3D/3dmodel.model``, so the file remains a
-perfectly ordinary 3MF for everything else.
+Pass ``printer`` (a key from :mod:`flowerpot.printers`) to write the
+OrcaSlicer / Bambu Studio / Creality Print *project* form of the package
+instead - the layout those slicers actually save, which is also what the
+"Print Settings" upload path on Creality Cloud expects:
+
+* geometry lives in ``3D/Objects/object_1.model`` and the root
+  ``3D/3dmodel.model`` only references it through a production-extension
+  component (viewers in this family load meshes from ``3D/Objects/`` and
+  render an empty plate when the mesh is inline in the root file);
+* ``Metadata/project_settings.config`` carries machine, process and
+  filament settings, ``model_settings.config`` the plate assignment;
+* the ``Application`` metadata says Bambu Studio, whose projects Creality
+  Cloud documents as auto-converted.
+
+Without ``printer`` the writer emits a plain, single-file, spec-core 3MF.
 """
 
 from __future__ import annotations
@@ -39,6 +48,17 @@ _CONTENT_TYPES = """<?xml version="1.0" encoding="UTF-8"?>
 
 _RELS_MODEL = ('<Relationship Target="/3D/3dmodel.model" Id="rel0" '
                'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>')
+_RELS_OBJECT = ('<Relationship Target="/3D/Objects/object_1.model" Id="rel1" '
+                'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>')
+_P_NS = "http://schemas.microsoft.com/3dmanufacturing/production/2015/06"
+
+# fixed, valid UUIDs in the style the Bambu Studio family stamps on
+# objects, components, builds and items (any stable UUID is acceptable)
+_UUID_OBJECT = "00000002-81cb-4c03-9d28-80fed5dfa1dc"
+_UUID_COMPONENT = "00010000-b206-40ff-9872-83e8017abed1"
+_UUID_MESH = "00010000-81cb-4c03-9d28-80fed5dfa1dc"
+_UUID_BUILD = "2c7c17d8-22b5-4d84-8835-1976022ea369"
+_UUID_ITEM = "00000002-b1ec-4553-aec9-835e5b724bb4"
 _RELS_THUMB = ('<Relationship Target="/Metadata/thumbnail.png" Id="rel1" '
                'Type="http://schemas.openxmlformats.org/package/2006/relationships/'
                'metadata/thumbnail"/>')
@@ -70,49 +90,78 @@ def write_3mf(
             f'<base name="accent" displaycolor="{parse_color(accent_color)}FF"/>'
         )
 
-    # with a printer profile the object is dropped at the middle of that
-    # machine's plate (project coordinates are plate-absolute); otherwise the
-    # build item carries no transform and consumers place it themselves
-    item_attrs = ""
-    slicer_meta = ""
+    def mesh_xml(out: io.StringIO, object_id: int, extra_attrs: str) -> None:
+        """Emit one <object> with the mesh, materials and accent overrides."""
+        out.write(
+            f'  <basematerials id="1">{"".join(materials)}</basematerials>\n'
+            f'  <object id="{object_id}" name="{name}"{extra_attrs} '
+            'type="model" pid="1" pindex="0">\n'
+            '   <mesh>\n    <vertices>\n'
+        )
+        for x, y, z in mesh.vertices:
+            out.write(f'     <vertex x="{x:.4f}" y="{y:.4f}" z="{z:.4f}"/>\n')
+        out.write('    </vertices>\n    <triangles>\n')
+        if use_accent:
+            for (a, b, c), acc in zip(mesh.faces, accent_mask):
+                extra = ' pid="1" p1="1"' if acc else ""
+                out.write(f'     <triangle v1="{a}" v2="{b}" v3="{c}"{extra}/>\n')
+        else:
+            for a, b, c in mesh.faces:
+                out.write(f'     <triangle v1="{a}" v2="{b}" v3="{c}"/>\n')
+        out.write('    </triangles>\n   </mesh>\n  </object>\n')
+
     transform = ""
+    object_xml = None
+    root = io.StringIO()
     if printer is not None:
+        # project form: root model only references 3D/Objects/object_1.model
         cx, cy = bed_center(printer)
         transform = f"1 0 0 0 1 0 0 0 1 {cx:.3f} {cy:.3f} 0"
-        item_attrs = f' transform="{transform}" printable="1"'
-        slicer_meta = (
-            ' <metadata name="Application">OrcaSlicer-V2.1.1</metadata>\n'
+        root.write(
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<model unit="millimeter" xml:lang="en-US" '
+            'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
+            f'xmlns:p="{_P_NS}" requiredextensions="p">\n'
+            ' <metadata name="Application">BambuStudio-02.01.01.52</metadata>\n'
             ' <metadata name="BambuStudio:3mfVersion">1</metadata>\n'
             f' <metadata name="Title">{name}</metadata>\n'
             ' <metadata name="Designer"></metadata>\n'
-            ' <metadata name="Description">flower pot generator</metadata>\n'
+            ' <metadata name="Description"></metadata>\n'
+            ' <resources>\n'
+            f'  <object id="2" p:UUID="{_UUID_OBJECT}" type="model">\n'
+            '   <components>\n'
+            f'    <component p:path="/3D/Objects/object_1.model" objectid="1" '
+            f'p:UUID="{_UUID_COMPONENT}" transform="1 0 0 0 1 0 0 0 1 0 0 0"/>\n'
+            '   </components>\n'
+            '  </object>\n'
+            ' </resources>\n'
+            f' <build p:UUID="{_UUID_BUILD}">\n'
+            f'  <item objectid="2" p:UUID="{_UUID_ITEM}" '
+            f'transform="{transform}" printable="1"/>\n'
+            ' </build>\n</model>\n'
         )
-
-    xml = io.StringIO()
-    xml.write(
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<model unit="millimeter" xml:lang="en-US" '
-        'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">\n'
-        f'{slicer_meta}'
-        ' <resources>\n'
-        f'  <basematerials id="1">{"".join(materials)}</basematerials>\n'
-        f'  <object id="2" name="{name}" type="model" pid="1" pindex="0">\n'
-        '   <mesh>\n    <vertices>\n'
-    )
-    for x, y, z in mesh.vertices:
-        xml.write(f'     <vertex x="{x:.4f}" y="{y:.4f}" z="{z:.4f}"/>\n')
-    xml.write('    </vertices>\n    <triangles>\n')
-    if use_accent:
-        for (a, b, c), acc in zip(mesh.faces, accent_mask):
-            extra = ' pid="1" p1="1"' if acc else ""
-            xml.write(f'     <triangle v1="{a}" v2="{b}" v3="{c}"{extra}/>\n')
+        obj = io.StringIO()
+        obj.write(
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<model unit="millimeter" xml:lang="en-US" '
+            'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
+            f'xmlns:p="{_P_NS}">\n'
+            ' <metadata name="BambuStudio:3mfVersion">1</metadata>\n'
+            ' <resources>\n'
+        )
+        mesh_xml(obj, 1, f' p:UUID="{_UUID_MESH}"')
+        obj.write(' </resources>\n <build/>\n</model>\n')
+        object_xml = obj.getvalue()
     else:
-        for a, b, c in mesh.faces:
-            xml.write(f'     <triangle v1="{a}" v2="{b}" v3="{c}"/>\n')
-    xml.write(
-        '    </triangles>\n   </mesh>\n  </object>\n </resources>\n'
-        f' <build>\n  <item objectid="2"{item_attrs}/>\n </build>\n</model>\n'
-    )
+        # plain form: one spec-core file, mesh inline
+        root.write(
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<model unit="millimeter" xml:lang="en-US" '
+            'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">\n'
+            ' <resources>\n'
+        )
+        mesh_xml(root, 2, "")
+        root.write(' </resources>\n <build>\n  <item objectid="2"/>\n </build>\n</model>\n')
 
     rels = _RELS_MODEL + (_RELS_THUMB if thumbnail_png else "")
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -124,7 +173,15 @@ def write_3mf(
             '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
             f"{rels}</Relationships>",
         )
-        zf.writestr("3D/3dmodel.model", xml.getvalue())
+        zf.writestr("3D/3dmodel.model", root.getvalue())
+        if object_xml is not None:
+            zf.writestr("3D/Objects/object_1.model", object_xml)
+            zf.writestr(
+                "3D/_rels/3dmodel.model.rels",
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                f"{_RELS_OBJECT}</Relationships>",
+            )
         if printer is not None:
             zf.writestr("Metadata/project_settings.config",
                         build_project_settings(printer, color))

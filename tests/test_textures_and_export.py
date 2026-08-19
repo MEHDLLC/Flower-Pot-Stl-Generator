@@ -212,6 +212,22 @@ def test_project_3mf_carries_a_creality_machine(tmp_path, small_pot):
     assert "mesh_stat" in model_xml
 
 
+def test_project_geometry_lives_in_the_objects_file(tmp_path, small_pot):
+    """The Bambu/Orca/Creality family loads meshes from 3D/Objects/ - with
+    the mesh inline in the root model their viewers render an empty plate."""
+    path = write_3mf(tmp_path / "p.3mf", small_pot, color="teal",
+                     printer="creality-k1-max")
+    with zipfile.ZipFile(path) as zf:
+        names = set(zf.namelist())
+        assert {"3D/Objects/object_1.model", "3D/_rels/3dmodel.model.rels"} <= names
+        root = zf.read("3D/3dmodel.model").decode()
+        obj = zf.read("3D/Objects/object_1.model").decode()
+    assert "<vertex " not in root                       # no inline mesh
+    assert 'p:path="/3D/Objects/object_1.model"' in root
+    assert 'requiredextensions="p"' in root
+    assert "<vertex " in obj and "<triangle " in obj
+
+
 def test_no_slice_info_is_ever_written(tmp_path, small_pot):
     """A slice_info.config marks a SLICED project; shipping one (even header
     only) makes Creality Cloud look for the machine there and reject the
