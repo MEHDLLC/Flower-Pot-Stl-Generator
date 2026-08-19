@@ -13,8 +13,6 @@
 name: Generate flower pot
 
 on:
-  push:            # TEMP: smoke test on the feature branch, removed after verification
-    branches: [claude/plant-pot-stl-generator-kmmw61]
   workflow_dispatch:
     inputs:
       pot_style:
