@@ -1,0 +1,124 @@
+# Generate a flower pot from the Actions tab:
+#   Actions -> "Generate flower pot" -> Run workflow -> pick your options.
+#
+# The run produces a downloadable artifact containing:
+#   <style>.stl            plain geometry
+#   <style>.3mf            same geometry with your color (and rim accent)
+#   <style>.png            preview render (also embedded in the 3mf thumbnail)
+#   (+ *_saucer.* when the saucer is enabled)
+#
+# Anything not covered by the inputs below (rib twist, texture depth, wall
+# thickness, ...) goes into "extra_args" exactly as you would type it on the
+# CLI, e.g.:  --wall-thickness 3.6 --rib-twist-degrees 60 --texture-cell 20
+name: Generate flower pot
+
+on:
+  workflow_dispatch:
+    inputs:
+      pot_style:
+        description: "Pot style"
+        type: choice
+        default: classic_tapered
+        options: [classic_tapered, low_poly_faceted, ribbed_spiral, hexagonal]
+      surface_texture:
+        description: "Surface texture"
+        type: choice
+        default: none
+        options: [none, herringbone, honeycomb, diamonds, waves]
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: terracotta
+      accent_color:
+        description: "Rim accent color (optional; palette name or hex)"
+        type: string
+        default: ""
+      height:
+        description: "Height in mm"
+        type: string
+        default: "145"
+      top_diameter:
+        description: "Top diameter in mm"
+        type: string
+        default: "150"
+      bottom_diameter:
+        description: "Bottom diameter in mm"
+        type: string
+        default: "105"
+      drainage_pattern:
+        description: "Drainage holes"
+        type: choice
+        default: ring
+        options: [ring, center, grid, none]
+      generate_saucer:
+        description: "Also generate a matching drip saucer"
+        type: boolean
+        default: false
+      extra_args:
+        description: "Extra CLI flags (see README / python -m flowerpot --help)"
+        type: string
+        default: ""
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt matplotlib
+
+      - name: Generate the pot
+        env:                       # env indirection keeps inputs out of the shell script;
+          #                            the fallbacks cover non-dispatch triggers
+          POT_STYLE: ${{ inputs.pot_style || 'classic_tapered' }}
+          TEXTURE: ${{ inputs.surface_texture || 'honeycomb' }}
+          COLOR: ${{ inputs.color || 'terracotta' }}
+          ACCENT: ${{ inputs.accent_color }}
+          HEIGHT: ${{ inputs.height || '145' }}
+          TOP_D: ${{ inputs.top_diameter || '150' }}
+          BOTTOM_D: ${{ inputs.bottom_diameter || '105' }}
+          DRAINAGE: ${{ inputs.drainage_pattern || 'ring' }}
+          SAUCER: ${{ inputs.generate_saucer }}
+          EXTRA_ARGS: ${{ inputs.extra_args }}
+        run: |
+          ARGS=(
+            --pot-style "$POT_STYLE"
+            --surface-texture "$TEXTURE"
+            --color "$COLOR"
+            --height "$HEIGHT"
+            --top-diameter "$TOP_D"
+            --bottom-diameter "$BOTTOM_D"
+            --drainage-pattern "$DRAINAGE"
+            --format both --preview --out out/
+          )
+          [ -n "$ACCENT" ] && ARGS+=(--accent-color "$ACCENT")
+          [ "$SAUCER" = "true" ] && ARGS+=(--generate-saucer)
+          # extra CLI flags, split on whitespace by design
+          read -ra EXTRA <<< "$EXTRA_ARGS"
+          python -m flowerpot "${ARGS[@]}" "${EXTRA[@]}" | tee report.txt
+
+      - name: Write the job summary
+        if: always()
+        run: |
+          {
+            echo "## Flower pot: ${{ inputs.pot_style || 'classic_tapered' }}"
+            echo '```'
+            cat report.txt 2>/dev/null || echo "generation failed - see the log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the pot
+        uses: actions/upload-artifact@v4
+        with:
+          name: pot-${{ inputs.pot_style || 'classic_tapered' }}-${{ github.run_number }}
+          path: out/
+          if-no-files-found: error
