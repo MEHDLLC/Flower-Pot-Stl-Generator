@@ -30,6 +30,11 @@ STYLES: dict[str, str] = {
 #: Drainage layouts understood by the generator.
 DRAINAGE_PATTERNS = ("center", "ring", "grid", "none")
 
+#: Relief textures that can be pressed into the outside of the wall.  They
+#: are independent of ``pot_style`` (except low_poly_faceted, whose sparse
+#: mesh cannot carry one).  Implementations live in :mod:`flowerpot.textures`.
+TEXTURES = ("none", "herringbone", "honeycomb", "diamonds", "waves")
+
 
 class ParameterError(ValueError):
     """Raised when a combination of parameters cannot produce a valid solid."""
@@ -100,6 +105,23 @@ class PotParams:
     hex_sides: int = 6               # hexagonal: 6 is a hexagon, 8 an octagon, etc.
     hex_corner_round: float = 2.0    # hexagonal / low_poly: corner rounding in mm.
     #                                  Small values keep crisp edges but avoid a knife edge.
+
+    # ------------------------------------------------------------------
+    # 4b. Surface texture (works on top of any style except low_poly)
+    # ------------------------------------------------------------------
+    surface_texture: str = "none"    # "none" | "herringbone" | "honeycomb"
+    #                                  | "diamonds" | "waves"
+    texture_depth: float = 1.0       # how far the relief stands proud, in mm.
+    #                                  1.0 reads clearly; past ~2 the grooves
+    #                                  start flirting with the overhang limit.
+    texture_cell: float = 16.0       # size of one pattern cell, in mm.
+
+    # ------------------------------------------------------------------
+    # 4c. Color (carried in the .3mf and the preview image; STL has none)
+    # ------------------------------------------------------------------
+    color: str = "terracotta"        # palette name or hex like "#B06040"
+    accent_color: str = ""           # optional second color for the rim.
+    #                                  Empty = single color everywhere.
 
     # ------------------------------------------------------------------
     # 5. Print optimisation
@@ -175,6 +197,21 @@ class PotParams:
                 f"unknown drainage_pattern {self.drainage_pattern!r}; "
                 f"choose from {list(DRAINAGE_PATTERNS)}"
             )
+        if self.surface_texture not in TEXTURES:
+            raise ParameterError(
+                f"unknown surface_texture {self.surface_texture!r}; "
+                f"choose from {list(TEXTURES)}"
+            )
+        if self.surface_texture != "none":
+            if self.texture_depth < 0 or self.texture_cell <= 0:
+                raise ParameterError("texture_depth/texture_cell must be positive")
+        from .colors import parse_color
+        try:
+            parse_color(self.color)
+            if self.accent_color:
+                parse_color(self.accent_color)
+        except ValueError as exc:
+            raise ParameterError(str(exc)) from None
         for name in ("height", "top_diameter", "bottom_diameter", "wall_thickness",
                      "base_thickness", "segments", "vertical_step"):
             if getattr(self, name) <= 0:
@@ -223,6 +260,26 @@ class PotParams:
                     f"rib helix angle {helix:.1f} deg exceeds the overhang limit - "
                     f"reduce rib_twist_degrees"
                 )
+        if self.surface_texture != "none":
+            if self.pot_style == "low_poly_faceted":
+                warn.append(
+                    "surface_texture is ignored on low_poly_faceted (its sparse "
+                    "mesh cannot carry a relief pattern)"
+                )
+            elif self.pot_style == "ribbed_spiral" and abs(self.rib_twist_degrees) > 25:
+                warn.append(
+                    "a texture on top of twisted ribs stacks their slopes and can "
+                    "pass the overhang limit - reduce rib_twist_degrees (<= 25) or "
+                    "texture_depth if the audit fails"
+                )
+            elif self.texture_depth / self.texture_cell > 0.12:
+                warn.append(
+                    f"texture_depth {self.texture_depth} is aggressive for "
+                    f"{self.texture_cell} mm cells - the groove walls may pass "
+                    f"the overhang limit"
+                )
+        if self.accent_color and not self.add_top_rim:
+            warn.append("accent_color colors the rim, but add_top_rim is off")
         return warn
 
     # -- dict / json ---------------------------------------------------

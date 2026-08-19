@@ -18,9 +18,9 @@ import sys
 from dataclasses import fields
 from pathlib import Path
 
-from .analysis import Report, audit
-from .build import build_pot, build_saucer
-from .params import DRAINAGE_PATTERNS, ParameterError, PotParams, STYLES
+from .colors import PALETTE
+from .export import export_pot
+from .params import DRAINAGE_PATTERNS, ParameterError, PotParams, STYLES, TEXTURES
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -39,6 +39,11 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--all", action="store_true",
                     help="export one pot per style instead of a single pot")
     ap.add_argument("--list-styles", action="store_true", help="print the styles and exit")
+    ap.add_argument("--format", choices=["stl", "3mf", "both"], default="stl",
+                    help="output format; 3mf carries the color (and rim accent)")
+    ap.add_argument("--preview", action="store_true",
+                    help="also render a PNG preview (needs matplotlib); "
+                         "the image is embedded in the 3mf as its thumbnail")
     ap.add_argument("--ascii", action="store_true", help="write ASCII STL instead of binary")
     ap.add_argument("--force", action="store_true",
                     help="write the STL even if the print-readiness audit fails")
@@ -58,6 +63,8 @@ def build_parser() -> argparse.ArgumentParser:
                 choices = sorted(STYLES)
             elif f.name == "drainage_pattern":
                 choices = list(DRAINAGE_PATTERNS)
+            elif f.name == "surface_texture":
+                choices = list(TEXTURES)
             grp.add_argument(flag, dest=f.name, type=caster, default=None,
                              choices=choices, help=f"(default: {default})")
     return ap
@@ -74,42 +81,14 @@ def params_from_args(args: argparse.Namespace) -> PotParams:
     return PotParams.from_dict(data)
 
 
-def _export(mesh, path: Path, ascii_stl: bool) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    data = mesh.export(file_type="stl_ascii" if ascii_stl else "stl")
-    mode = "w" if isinstance(data, str) else "wb"
-    with open(path, mode) as fh:
-        fh.write(data)
-    return path
-
-
-def _emit(p: PotParams, out: Path, name: str, args) -> tuple[list[Path], bool]:
-    """Build, audit and write one pot (plus its saucer).  Returns (paths, ok)."""
-    written: list[Path] = []
-    everything_ok = True
-
-    for warning in p.validate():
-        print(f"  WARN {warning}", file=sys.stderr)
-
-    jobs = [(build_pot, f"{name}.stl")]
-    if p.generate_saucer:
-        jobs.append((build_saucer, f"{name}_saucer.stl"))
-
-    for builder, filename in jobs:
-        mesh = builder(p)
-        report: Report = audit(mesh, p.overhang_limit_deg)
-        if not args.quiet:
-            print(f"\n{filename}")
-            print(report)
-        everything_ok &= report.ok
-        if report.ok or args.force:
-            target = out if out.suffix.lower() == ".stl" else out / filename
-            written.append(_export(mesh, target, args.ascii))
-            print(f"  -> {written[-1]}")
-        else:
-            print(f"  !! not written: audit failed (use --force to write anyway)",
-                  file=sys.stderr)
-    return written, everything_ok
+def _emit(p: PotParams, out: Path, name: str, args) -> bool:
+    formats = ("stl", "3mf") if args.format == "both" else (args.format,)
+    result = export_pot(
+        p, name, out, formats,
+        preview=args.preview, force=args.force,
+        ascii_stl=args.ascii, quiet=args.quiet,
+    )
+    return result.ok
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -120,6 +99,8 @@ def main(argv: list[str] | None = None) -> int:
         for key, blurb in STYLES.items():
             print(f"  {key:<18} {blurb}")
         print("\nDrainage patterns: " + ", ".join(DRAINAGE_PATTERNS))
+        print("Surface textures:  " + ", ".join(TEXTURES))
+        print("Colors:            " + ", ".join(sorted(PALETTE)) + ", or any #RRGGBB")
         return 0
 
     try:
@@ -139,10 +120,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.all:
             for style in STYLES:
                 sp = params.with_(pot_style=style)
-                _, style_ok = _emit(sp, out, args.name or style, args)
-                ok &= style_ok
+                ok &= _emit(sp, out, args.name or style, args)
         else:
-            _, ok = _emit(params, out, args.name or params.pot_style, args)
+            ok = _emit(params, out, args.name or params.pot_style, args)
     except ParameterError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

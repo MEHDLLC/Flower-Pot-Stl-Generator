@@ -20,7 +20,8 @@
 
 from pathlib import Path
 
-from flowerpot import PotParams, audit, build_pot, build_saucer
+from flowerpot.export import export_pot
+from flowerpot.params import PotParams
 
 # ---------------------------------------------------------------------------
 # 1.  PICK A STYLE
@@ -68,6 +69,16 @@ PARAMS = dict(
     hex_sides=6,              # hexagonal: 6 = hexagon, 8 = octagon
     hex_corner_round=2.0,     # hexagonal: corner rounding
 
+    # -- surface texture (any style except low_poly_faceted) -----------------
+    surface_texture="none",   # "none" | "herringbone" | "honeycomb"
+    #                           | "diamonds" | "waves"
+    texture_depth=1.0,        # relief height in mm; ~2 starts risking overhangs
+    texture_cell=16.0,        # pattern cell size in mm
+
+    # -- color (rides in the .3mf and the preview; STL is colorless) ---------
+    color="terracotta",       # palette name (see flowerpot/colors.py) or "#B06040"
+    accent_color="",          # optional second color for the rim
+
     # -- matching drip saucer ----------------------------------------------
     generate_saucer=False,    # True also writes <name>_saucer.stl
     saucer_clearance=4.0,     # gap around the pot foot
@@ -78,6 +89,9 @@ PARAMS = dict(
 )
 
 OUTPUT_DIR = Path("output")
+FORMATS = ("stl",)            # any of "stl", "3mf" - 3mf carries the color
+PREVIEW = False               # True also renders <name>.png (needs matplotlib)
+#                               and embeds it in the 3mf as its thumbnail
 
 # ---------------------------------------------------------------------------
 # 3.  WANT A WHOLE SET?  Add entries here; each one overrides PARAMS.
@@ -97,25 +111,8 @@ def make(overrides: dict) -> None:
     settings = dict(PARAMS)
     settings.update(overrides)
     name = settings.pop("name", settings["pot_style"])
-
     params = PotParams(**settings)
-    for warning in params.validate():
-        print(f"  WARN {warning}")
-
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    jobs = [(build_pot, f"{name}.stl")]
-    if params.generate_saucer:
-        jobs.append((build_saucer, f"{name}_saucer.stl"))
-
-    for builder, filename in jobs:
-        mesh = builder(params)
-        report = audit(mesh, params.overhang_limit_deg)
-        print(f"\n{filename}")
-        print(report)
-        if not report.ok:
-            print("  !! this design is not print-ready - see the failures above")
-        mesh.export(OUTPUT_DIR / filename)
-        print(f"  -> {OUTPUT_DIR / filename}")
+    export_pot(params, name, OUTPUT_DIR, FORMATS, preview=PREVIEW, force=True)
 
 
 if __name__ == "__main__":

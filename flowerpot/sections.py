@@ -86,6 +86,10 @@ class Section:
 
     def __init__(self, params: PotParams):
         self.p = params
+        #: Optional relief displacement field (see :mod:`flowerpot.textures`),
+        #: set by the builder.  Applied outside the style's own shape, and
+        #: only on the decorated (outer) surface.
+        self.texture = None
         #: Above this height the decoration stops evolving (ribs stop
         #: twisting, facets stop rotating).  The builder sets it to the foot
         #: of the rim chamfer: if the outline kept turning while the chamfer
@@ -99,6 +103,12 @@ class Section:
 
     # -- outline -------------------------------------------------------
     def radius(self, theta: np.ndarray, z: float, r: float, decorate: bool) -> np.ndarray:
+        rad = self._shape_radius(theta, z, r, decorate)
+        if decorate and self.texture is not None:
+            rad = rad + self.texture(theta, z)
+        return rad
+
+    def _shape_radius(self, theta: np.ndarray, z: float, r: float, decorate: bool) -> np.ndarray:
         return np.full_like(theta, r)
 
     def xy(self, theta: np.ndarray, z: float, r: float, decorate: bool = True):
@@ -106,11 +116,18 @@ class Section:
         return rad * np.cos(theta), rad * np.sin(theta)
 
     # -- sampling ------------------------------------------------------
+    def _theta_count(self) -> int:
+        """Samples around the pot: at least ``segments``, more when a texture
+        needs the resolution to draw its grooves."""
+        n = int(self.p.segments)
+        if self.texture is not None:
+            n = max(n, min(480, self.texture.n_around * 12))
+        return n
+
     def thetas(self) -> np.ndarray:
         """Angles sampled around the pot.  Polygonal styles round the count up
         so that every corner lands exactly on a sample."""
-        n = int(self.p.segments)
-        return np.linspace(0.0, 2.0 * math.pi, n, endpoint=False)
+        return np.linspace(0.0, 2.0 * math.pi, self._theta_count(), endpoint=False)
 
     def extra_ring_heights(self, z0: float, z1: float) -> list[float]:
         """Heights that must get their own ring of vertices (style features)."""
@@ -138,7 +155,7 @@ class RibbedSection(Section):
     round footprint.
     """
 
-    def radius(self, theta, z, r, decorate):
+    def _shape_radius(self, theta, z, r, decorate):
         p = self.p
         if not decorate or p.rib_depth <= 0 or p.rib_count <= 0:
             return np.full_like(theta, r)
@@ -169,7 +186,7 @@ class PolygonSection(Section):
     def phase(self, z: float) -> float:
         return 0.0
 
-    def radius(self, theta, z, r, decorate):
+    def _shape_radius(self, theta, z, r, decorate):
         return r * _rounded_polygon_radius(
             theta + self.phase(z), self.n, self._corner_frac(r)
         )
@@ -178,7 +195,7 @@ class PolygonSection(Section):
         # a multiple of 2 * sides guarantees samples land on both the corner
         # tips and the middle of every flat face
         step = 2 * self.n
-        n = int(math.ceil(self.p.segments / step) * step)
+        n = int(math.ceil(self._theta_count() / step) * step)
         return np.linspace(0.0, 2.0 * math.pi, n, endpoint=False)
 
 

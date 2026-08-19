@@ -1,11 +1,13 @@
 # Flower Pot STL Generator
 
-Procedurally generate **watertight, 3D-printable flower pots** as `.STL` files from a
-handful of parameters. Four design styles, four drainage layouts, an optional rim and a
-matching drip saucer — every export is checked for manifoldness and unsupported
-overhangs *before* it is written to disk.
+Procedurally generate **watertight, 3D-printable flower pots** as `.STL` or colored
+`.3mf` files from a handful of parameters. Four design styles, four surface textures,
+four drainage layouts, an optional rim and a matching drip saucer — every export is
+checked for manifoldness and unsupported overhangs *before* it is written to disk.
+Runs locally or straight from a **GitHub Actions workflow**, no install needed.
 
 ![the four pot styles](docs/img/styles.png)
+![the surface textures](docs/img/textures.png)
 
 ---
 
@@ -44,6 +46,8 @@ classic_tapered.stl
 ```bash
 python -m flowerpot --list-styles
 python -m flowerpot --pot-style hexagonal --height 120 --top-diameter 130
+python -m flowerpot --surface-texture honeycomb --color sage --format 3mf
+python -m flowerpot --format both --preview                  # stl + 3mf + png
 python -m flowerpot --all --generate-saucer --out output/    # one pot per style
 python -m flowerpot --save-config mypot.json                 # save the settings
 python -m flowerpot --config mypot.json                      # and reuse them
@@ -52,7 +56,14 @@ python -m flowerpot --config mypot.json                      # and reuse them
 The CLI exits non-zero and refuses to write a file if the print audit fails; pass
 `--force` to write it anyway.
 
-**Option C — as a library.**
+**Option C — GitHub Actions, no local install.** Open the repo's **Actions** tab, pick
+**“Generate flower pot”**, hit *Run workflow* and choose your style, texture, color and
+dimensions from the form (anything else goes in *extra_args* exactly as you would type
+it on the CLI). The finished run offers a downloadable artifact containing the `.stl`,
+the colored `.3mf` and a `.png` preview, and the job summary shows the full print
+audit. A second workflow (`tests`) runs the suite on every push.
+
+**Option D — as a library.**
 
 ```python
 from flowerpot import PotParams, build_pot, audit
@@ -78,6 +89,41 @@ Set with `pot_style` / `--pot-style`.
 The cavity follows the same cross-section as the outside, so the wall stays a constant
 thickness whatever style you pick. Ribs are the exception: they are added *outside* the
 nominal wall, so the wall is never thinner than `wall_thickness`.
+
+## Surface textures
+
+Set with `surface_texture` / `--surface-texture` — a relief pattern pressed into the
+outside of the wall, independent of the style (a honeycomb hexagonal pot or a diamond
+spiral pot is fair game). Like the ribs, textures only ever *add* material outside the
+nominal wall, fade out at the base and below the rim so both stay clean, and repeat a
+whole number of times around the pot so there is no seam.
+
+| Texture | Look |
+|---|---|
+| `herringbone` | columns of diagonal planks, direction alternating per column |
+| `honeycomb` | raised hexagon tiles separated by grooves (a true hex Voronoi) |
+| `diamonds` | quilted diamond tiles between two crossing groove families |
+| `waves` | concentric horizontal ripples, like a coil-built pot |
+
+Tune with `texture_depth` (default 1.0 mm — past ~2 the groove walls start flirting
+with the overhang limit, and the validator says so) and `texture_cell` (pattern size,
+default 16 mm). The one exclusion: `low_poly_faceted` ignores textures — its
+deliberately sparse mesh has no vertices to carry them — with a warning. Combining a
+texture with heavily twisted ribs (`rib_twist_degrees` > 25) stacks their slopes; the
+validator warns and the audit has the final word.
+
+## Colors and formats
+
+STL carries no color, so the generator can also write **3MF** (`--format 3mf` or
+`both`): the same audited mesh plus your color, which slicers pick up on import.
+`color` takes a palette name (`terracotta`, `clay`, `white`, `black`, `charcoal`,
+`sage`, `olive`, `teal`, `cobalt`, `sand`, `blush`, `mustard`) or any `#RRGGBB` hex.
+`accent_color` optionally paints the rim a second color — in slicers that support
+painted models you get a two-tone pot with no extra work.
+
+`--preview` renders a PNG of the pot in its color (needs `matplotlib`); the image is
+also embedded into the `.3mf` as its package thumbnail, so the pot shows its face in
+file pickers and slicer project lists.
 
 ## Parameters
 
@@ -126,8 +172,12 @@ producing a broken mesh.
 | `inner_base_chamfer` | 4.0 | 45° fillet where the inside wall meets the floor |
 | `base_flat` | `True` | keep the footprint flat for bed adhesion |
 
+**Texture** — `surface_texture` (`"none"`), `texture_depth` (1.0), `texture_cell` (16.0).
+
+**Color** — `color` (`"terracotta"`), `accent_color` (`""` = single color).
+
 **Saucer** — `generate_saucer`, `saucer_clearance` (4.0), `saucer_height` (20.0),
-`saucer_wall` (3.0), `saucer_base` (4.0). Written as `<name>_saucer.stl`.
+`saucer_wall` (3.0), `saucer_base` (4.0). Written as `<name>_saucer.*`.
 
 **Mesh quality** — `segments` (192 around the circumference; 128 is fast, 256 glassy) and
 `vertical_step` (1.5 mm between rings). The faceted style deliberately ignores
@@ -186,6 +236,10 @@ python -m flowerpot --pot-style ribbed_spiral --height 260 --top-diameter 220 \
 
 # low-poly crystal, coarse and chunky
 python -m flowerpot --pot-style low_poly_faceted --facet-count 6 --facet-bands 4
+
+# two-tone quilted pot as a colored 3mf with a preview
+python -m flowerpot --surface-texture diamonds --color cobalt --accent-color sand \
+    --format both --preview
 ```
 
 ## Slicing
@@ -202,12 +256,18 @@ flowerpot/
   params.py     PotParams - every knob, its default, and validation
   profile.py    the vertical silhouette (outer wall, rim, cavity, floor fillet)
   sections.py   the horizontal cross-section per style (round, polygon, ribs, facets)
+  textures.py   the relief patterns (herringbone, honeycomb, diamonds, waves)
   build.py      sweeping, booleans, drainage, the saucer
   analysis.py   the print-readiness audit
+  colors.py     the palette and hex parsing
+  threemf.py    minimal colored-3MF writer (with thumbnail support)
+  preview.py    headless PNG renders
+  export.py     build -> audit -> stl/3mf/png, shared by every front end
   cli.py        argparse front end generated from PotParams
 generate_pot.py the edit-and-run script
-tools/          preview renderer (docs only)
-tests/          35 regression tests
+.github/        the "Generate flower pot" workflow + CI
+tools/          docs image renderer
+tests/          55 regression tests
 ```
 
 ## Tests
@@ -216,10 +276,11 @@ tests/          35 regression tests
 python -m pytest tests/ -q
 ```
 
-They cover manifoldness and overhangs for every style, dimensional accuracy, measured
-wall thickness (by slicing the mesh and comparing the two loops), drainage topology,
-saucer fit (boolean intersection with the pot must be empty), STL round-trips, parameter
-validation and the CLI.
+They cover manifoldness and overhangs for every style and texture, dimensional
+accuracy, measured wall thickness (by slicing the mesh and comparing the two loops),
+drainage topology, saucer fit (boolean intersection with the pot must be empty),
+texture guarantees (adds material only, seamless wrap, fades at base and rim),
+STL and 3MF round-trips, color handling, parameter validation and the CLI.
 
 ## Previews
 

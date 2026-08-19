@@ -23,6 +23,7 @@ import trimesh
 from .params import ParameterError, PotParams
 from .profile import Profiles, build_profiles, resample, wall_radius
 from .sections import Section, make_section
+from .textures import make_texture
 
 BOOLEAN_ENGINE = "manifold"
 
@@ -174,10 +175,16 @@ def build_pot(p: PotParams) -> trimesh.Trimesh:
     section = make_section(p)
     prof = build_profiles(p)
     section.freeze_z = prof.decoration_freeze_z
+    section.texture = make_texture(p, prof)
+
+    # a texture's grooves need rings a bit closer together than a bare wall
+    step = p.vertical_step
+    if section.texture is not None:
+        step = min(step, p.texture_cell / 12.0)
 
     smooth = section.smooth_vertically()
     outer_rings = resample(
-        prof.outer, p.vertical_step,
+        prof.outer, step,
         section.extra_ring_heights(0.0, p.height), smooth,
     )
     inner_rings = resample(
@@ -230,6 +237,7 @@ def build_saucer(p: PotParams) -> trimesh.Trimesh:
         belly=0.0,
         inner_base_chamfer=min(2.0, p.saucer_wall),
         drainage_pattern="none",
+        surface_texture="none",
         facet_bands=max(1, p.facet_bands // 3),
         rib_twist_degrees=p.rib_twist_degrees * p.saucer_height / max(p.height, 1e-9),
     )
