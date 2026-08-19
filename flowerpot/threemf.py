@@ -27,7 +27,7 @@ import trimesh
 
 from .colors import parse_color
 from .printers import (bed_center, build_model_settings,
-                       build_project_settings, build_slice_info)
+                       build_project_settings)
 
 _CONTENT_TYPES = """<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -131,7 +131,6 @@ def write_3mf(
             zf.writestr("Metadata/model_settings.config",
                         build_model_settings(2, name, transform,
                                              thumbnail_png is not None))
-            zf.writestr("Metadata/slice_info.config", build_slice_info())
         if thumbnail_png:
             zf.writestr("Metadata/thumbnail.png", thumbnail_png)
             if printer is not None:

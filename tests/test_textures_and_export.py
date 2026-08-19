@@ -212,6 +212,16 @@ def test_project_3mf_carries_a_creality_machine(tmp_path, small_pot):
     assert "mesh_stat" in model_xml
 
 
+def test_no_slice_info_is_ever_written(tmp_path, small_pot):
+    """A slice_info.config marks a SLICED project; shipping one (even header
+    only) makes Creality Cloud look for the machine there and reject the
+    file with "does not contain Creality's machine models"."""
+    path = write_3mf(tmp_path / "p.3mf", small_pot, color="teal",
+                     printer="creality-k1-max", thumbnail_png=b"\x89PNG fake")
+    with zipfile.ZipFile(path) as zf:
+        assert "Metadata/slice_info.config" not in zf.namelist()
+
+
 def test_model_settings_is_valid_xml_with_and_without_thumbnail(tmp_path, small_pot):
     import xml.dom.minidom as minidom
     for i, thumb in enumerate((None, b"\x89PNG fake")):
