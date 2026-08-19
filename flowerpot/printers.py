@@ -146,6 +146,14 @@ def build_model_settings(
     ``assemble_item`` unconditionally and fails to render without it.
     ``transform`` is the same 4x3 row-major matrix used on the build item,
     so the assembled view matches the plate placement.
+
+    Deliberately NOT written: ``Metadata/slice_info.config``.  A populated
+    slice_info is where *sliced* projects declare their printer model, and
+    shipping even a header-only one makes Creality Cloud's validator treat
+    the package as a sliced file and reject it with "does not contain
+    Creality's machine models" - the machine must be found in
+    project_settings.config instead, which only happens when slice_info is
+    absent.
     """
     thumbs = ""
     if has_thumbnail:
@@ -177,18 +185,6 @@ def build_model_settings(
   <assemble>
    <assemble_item object_id="{object_id}" instance_id="0" transform="{transform}" offset="0 0 0" />
   </assemble>
-</config>
-"""
-
-
-def build_slice_info() -> str:
-    """Header-only ``Metadata/slice_info.config`` (the project is unsliced)."""
-    return """<?xml version="1.0" encoding="UTF-8"?>
-<config>
-  <header>
-    <header_item key="X-BBL-Client-Type" value="slicer"/>
-    <header_item key="X-BBL-Client-Version" value="02.01.01.52"/>
-  </header>
 </config>
 """
 
