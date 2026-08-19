@@ -78,6 +78,9 @@ PARAMS = dict(
     # -- color (rides in the .3mf and the preview; STL is colorless) ---------
     color="terracotta",       # palette name (see flowerpot/colors.py) or "#B06040"
     accent_color="",          # optional second color for the rim
+    printer="creality-k1-max", # machine profile embedded in the .3mf; also
+    #                            "creality-k1", "creality-ender3-v3-ke", or
+    #                            "none" for a plain geometry-only 3MF
 
     # -- matching drip saucer ----------------------------------------------
     generate_saucer=False,    # True also writes <name>_saucer.stl

@@ -125,6 +125,24 @@ painted models you get a two-tone pot with no extra work.
 also embedded into the `.3mf` as its package thumbnail, so the pot shows its face in
 file pickers and slicer project lists.
 
+### Printer profiles (Creality Cloud, Creality Print, Bambu Studio, OrcaSlicer)
+
+By default the `.3mf` also embeds a **slicer project payload** - machine, process and
+filament settings in the shared OrcaSlicer / Bambu Studio / Creality Print (5.0+)
+convention (`Metadata/project_settings.config` + plate assignment + BBS metadata).
+That is what Creality Cloud's *"Print Settings"* upload path checks for; a plain
+geometry 3MF gets rejected there with *"this file does not contain Creality's machine
+models"* (it is still fine under *"STL/CAD files or other types of 3MF files"*).
+
+Pick the machine with `--printer`: `creality-k1-max` (default), `creality-k1`,
+`creality-ender3-v3-ke`, or `none` for a plain geometry-only 3MF. The profile is
+conservative (0.4 mm nozzle, 0.2 mm layers, 3 walls, 15 % infill, generic PLA, and
+the pot's `color` as the filament color), the object is placed at the middle of that
+machine's plate, and the export warns if the pot doesn't fit the bed. Slicers treat
+the payload as a starting point - anything can be adjusted after opening. The
+geometry stays inline in the standard `3D/3dmodel.model`, so the file remains an
+ordinary valid 3MF for every other consumer.
+
 ## Parameters
 
 All dimensions in **millimetres**, angles in **degrees**. Defaults in brackets.
@@ -175,6 +193,8 @@ producing a broken mesh.
 **Texture** — `surface_texture` (`"none"`), `texture_depth` (1.0), `texture_cell` (16.0).
 
 **Color** — `color` (`"terracotta"`), `accent_color` (`""` = single color).
+
+**Printer** — `printer` (`"creality-k1-max"`); the machine profile embedded in the 3MF.
 
 **Saucer** — `generate_saucer`, `saucer_clearance` (4.0), `saucer_height` (20.0),
 `saucer_wall` (3.0), `saucer_base` (4.0). Written as `<name>_saucer.*`.
@@ -260,14 +280,15 @@ flowerpot/
   build.py      sweeping, booleans, drainage, the saucer
   analysis.py   the print-readiness audit
   colors.py     the palette and hex parsing
-  threemf.py    minimal colored-3MF writer (with thumbnail support)
+  printers.py   machine profiles + the slicer project payload
+  threemf.py    minimal colored-3MF writer (thumbnail + project settings)
   preview.py    headless PNG renders
   export.py     build -> audit -> stl/3mf/png, shared by every front end
   cli.py        argparse front end generated from PotParams
 generate_pot.py the edit-and-run script
 .github/        the "Generate flower pot" workflow + CI
 tools/          docs image renderer
-tests/          55 regression tests
+tests/          61 regression tests
 ```
 
 ## Tests

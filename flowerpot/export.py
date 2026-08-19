@@ -16,6 +16,7 @@ import trimesh
 from .analysis import audit
 from .build import build_pot, build_saucer
 from .params import PotParams
+from .printers import PRINTERS
 from .profile import build_profiles
 from .threemf import rim_accent_mask, write_3mf
 
@@ -80,6 +81,15 @@ def export_pot(
             print(f"\n{stem}")
             print(report)
         result.ok &= report.ok
+        printer = params.printer if params.printer != "none" else None
+        if printer is not None:
+            bw, bd = PRINTERS[printer]["bed"]
+            bh = PRINTERS[printer]["height"]
+            sx, sy, sz = report.size_mm
+            if sx > bw or sy > bd or sz > bh:
+                print(f"  WARN {stem} ({sx:.0f} x {sy:.0f} x {sz:.0f} mm) does not fit "
+                      f"the {PRINTERS[printer]['model']} bed ({bw} x {bd} x {bh} mm)",
+                      file=sys.stderr)
         if not (report.ok or force):
             print("  !! not written: audit failed (use force to write anyway)",
                   file=sys.stderr)
@@ -106,6 +116,7 @@ def export_pot(
                     accent_mask=(rim_accent_mask(mesh, rim_z)
                                  if is_pot and rim_z is not None else None),
                     thumbnail_png=png_bytes,
+                    printer=printer,
                 )
             result.written.append(path)
             print(f"  -> {path}")
