@@ -179,3 +179,70 @@ def test_cli_format_both(tmp_path):
     assert code == 0
     assert (tmp_path / "hexagonal.stl").exists()
     assert (tmp_path / "hexagonal.3mf").exists()
+
+
+# ---------------------------------------------------------------------------
+# slicer project payload (Creality Cloud "Print Settings" uploads)
+# ---------------------------------------------------------------------------
+def test_project_3mf_carries_a_creality_machine(tmp_path, small_pot):
+    import json
+    path = write_3mf(tmp_path / "proj.3mf", small_pot, name="pot",
+                     color="teal", printer="creality-k1-max")
+    with zipfile.ZipFile(path) as zf:
+        names = set(zf.namelist())
+        assert {"Metadata/project_settings.config",
+                "Metadata/model_settings.config"} <= names
+        cfg = json.loads(zf.read("Metadata/project_settings.config"))
+        xml = zf.read("3D/3dmodel.model").decode()
+        model_xml = zf.read("Metadata/model_settings.config").decode()
+    # the machine model is what Creality Cloud's validator looks for
+    assert cfg["printer_model"] == "Creality K1 Max"
+    assert cfg["printer_settings_id"] == "Creality K1 Max 0.4 nozzle"
+    assert cfg["printable_area"] == ["0x0", "300x0", "300x300", "0x300"]
+    # the pot's color rides into the filament slot
+    assert cfg["filament_colour"] == ["#2E7F86"]
+    # BBS-family metadata + plate-centred placement
+    assert "BambuStudio:3mfVersion" in xml
+    assert 'transform="1 0 0 0 1 0 0 0 1 150.000 150.000 0"' in xml
+    assert 'object_id" value="2"' in model_xml
+
+
+def test_project_3mf_still_reads_as_a_plain_3mf(tmp_path, small_pot):
+    """The payload is additive: any standard 3MF consumer still gets the mesh."""
+    path = write_3mf(tmp_path / "proj.3mf", small_pot, color="sage",
+                     printer="creality-k1")
+    scene = trimesh.load(path)
+    geo = next(iter(scene.geometry.values()))
+    assert geo.is_watertight
+    assert geo.volume == pytest.approx(small_pot.volume, rel=1e-4)
+
+
+def test_printer_none_writes_a_plain_3mf(tmp_path, small_pot):
+    path = write_3mf(tmp_path / "plain.3mf", small_pot, color="sage",
+                     printer=None)
+    with zipfile.ZipFile(path) as zf:
+        assert "Metadata/project_settings.config" not in zf.namelist()
+        assert "BambuStudio" not in zf.read("3D/3dmodel.model").decode()
+
+
+def test_every_printer_profile_is_well_formed():
+    import json
+    from flowerpot.printers import PRINTERS, build_project_settings
+    for key in PRINTERS:
+        cfg = json.loads(build_project_settings(key, "terracotta"))
+        assert "Creality" in cfg["printer_model"]
+        w = int(cfg["printable_area"][2].split("x")[0])
+        assert w >= 200 and int(cfg["printable_height"]) >= 200
+
+
+def test_unknown_printer_is_rejected():
+    with pytest.raises(ParameterError):
+        PotParams(printer="bambu-x1c").validate()
+
+
+def test_export_warns_when_the_pot_overflows_the_bed(tmp_path, capsys):
+    p = PotParams(height=230, top_diameter=240, bottom_diameter=190,
+                  printer="creality-k1", segments=72, vertical_step=3.0,
+                  drainage_hole_radius=8.0)
+    export_pot(p, "big", tmp_path, ("3mf",), quiet=True)
+    assert "does not fit" in capsys.readouterr().err

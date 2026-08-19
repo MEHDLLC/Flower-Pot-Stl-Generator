@@ -1,4 +1,4 @@
-"""Minimal 3MF writer with material colors.
+"""Minimal 3MF writer with material colors and slicer project settings.
 
 STL carries no color, so for a colored pot we write 3MF - a zip package
 holding one XML model.  This writer is deliberately small and dependency
@@ -7,6 +7,13 @@ package thumbnail that slicers show in their file pickers.
 
 Two-tone pots: pass ``accent_mask`` (a boolean per face) and those faces
 get the accent material - the CLI uses it to color the rim.
+
+Pass ``printer`` (a key from :mod:`flowerpot.printers`) to also embed the
+OrcaSlicer / Bambu Studio / Creality Print project payload - machine,
+process and filament settings plus plate assignment - which is what the
+"Print Settings" upload path on Creality Cloud requires.  The geometry
+stays inline in the standard ``3D/3dmodel.model``, so the file remains a
+perfectly ordinary 3MF for everything else.
 """
 
 from __future__ import annotations
@@ -19,6 +26,7 @@ import numpy as np
 import trimesh
 
 from .colors import parse_color
+from .printers import bed_center, build_model_settings, build_project_settings
 
 _CONTENT_TYPES = """<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -44,6 +52,7 @@ def write_3mf(
     accent_color: str | None = None,
     accent_mask: np.ndarray | None = None,
     thumbnail_png: bytes | None = None,
+    printer: str | None = None,
 ) -> Path:
     """Write ``mesh`` to ``path`` as a colored 3MF.  Returns the path."""
     path = Path(path)
@@ -60,11 +69,28 @@ def write_3mf(
             f'<base name="accent" displaycolor="{parse_color(accent_color)}FF"/>'
         )
 
+    # with a printer profile the object is dropped at the middle of that
+    # machine's plate (project coordinates are plate-absolute); otherwise the
+    # build item carries no transform and consumers place it themselves
+    item_attrs = ""
+    slicer_meta = ""
+    if printer is not None:
+        cx, cy = bed_center(printer)
+        item_attrs = f' transform="1 0 0 0 1 0 0 0 1 {cx:.3f} {cy:.3f} 0" printable="1"'
+        slicer_meta = (
+            ' <metadata name="Application">OrcaSlicer-V2.1.1</metadata>\n'
+            ' <metadata name="BambuStudio:3mfVersion">1</metadata>\n'
+            f' <metadata name="Title">{name}</metadata>\n'
+            ' <metadata name="Designer"></metadata>\n'
+            ' <metadata name="Description">flower pot generator</metadata>\n'
+        )
+
     xml = io.StringIO()
     xml.write(
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<model unit="millimeter" xml:lang="en-US" '
         'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">\n'
+        f'{slicer_meta}'
         ' <resources>\n'
         f'  <basematerials id="1">{"".join(materials)}</basematerials>\n'
         f'  <object id="2" name="{name}" type="model" pid="1" pindex="0">\n'
@@ -82,7 +108,7 @@ def write_3mf(
             xml.write(f'     <triangle v1="{a}" v2="{b}" v3="{c}"/>\n')
     xml.write(
         '    </triangles>\n   </mesh>\n  </object>\n </resources>\n'
-        ' <build>\n  <item objectid="2"/>\n </build>\n</model>\n'
+        f' <build>\n  <item objectid="2"{item_attrs}/>\n </build>\n</model>\n'
     )
 
     rels = _RELS_MODEL + (_RELS_THUMB if thumbnail_png else "")
@@ -96,8 +122,16 @@ def write_3mf(
             f"{rels}</Relationships>",
         )
         zf.writestr("3D/3dmodel.model", xml.getvalue())
+        if printer is not None:
+            zf.writestr("Metadata/project_settings.config",
+                        build_project_settings(printer, color))
+            zf.writestr("Metadata/model_settings.config",
+                        build_model_settings(2, name))
         if thumbnail_png:
             zf.writestr("Metadata/thumbnail.png", thumbnail_png)
+            if printer is not None:
+                # the name the slicer family uses for the plate preview
+                zf.writestr("Metadata/plate_1.png", thumbnail_png)
     return path
 
 

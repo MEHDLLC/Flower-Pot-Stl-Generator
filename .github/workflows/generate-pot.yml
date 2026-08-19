@@ -8,8 +8,9 @@
 #   (+ *_saucer.* when the saucer is enabled)
 #
 # Anything not covered by the inputs below (rib twist, texture depth, wall
-# thickness, ...) goes into "extra_args" exactly as you would type it on the
-# CLI, e.g.:  --wall-thickness 3.6 --rib-twist-degrees 60 --texture-cell 20
+# thickness, rim accent color, ...) goes into "extra_args" exactly as you
+# would type it on the CLI, e.g.:
+#   --wall-thickness 3.6 --rib-twist-degrees 60 --accent-color sand
 name: Generate flower pot
 
 on:
@@ -29,10 +30,11 @@ on:
         description: "Color (palette name or #RRGGBB hex)"
         type: string
         default: terracotta
-      accent_color:
-        description: "Rim accent color (optional; palette name or hex)"
-        type: string
-        default: ""
+      printer:
+        description: "Printer profile embedded in the .3mf (for Creality Cloud / slicers)"
+        type: choice
+        default: creality-k1-max
+        options: [creality-k1-max, creality-k1, creality-ender3-v3-ke, none]
       height:
         description: "Height in mm"
         type: string
@@ -82,7 +84,7 @@ jobs:
           POT_STYLE: ${{ inputs.pot_style || 'classic_tapered' }}
           TEXTURE: ${{ inputs.surface_texture || 'honeycomb' }}
           COLOR: ${{ inputs.color || 'terracotta' }}
-          ACCENT: ${{ inputs.accent_color }}
+          PRINTER: ${{ inputs.printer || 'creality-k1-max' }}
           HEIGHT: ${{ inputs.height || '145' }}
           TOP_D: ${{ inputs.top_diameter || '150' }}
           BOTTOM_D: ${{ inputs.bottom_diameter || '105' }}
@@ -98,9 +100,9 @@ jobs:
             --top-diameter "$TOP_D"
             --bottom-diameter "$BOTTOM_D"
             --drainage-pattern "$DRAINAGE"
+            --printer "$PRINTER"
             --format both --preview --out out/
           )
-          [ -n "$ACCENT" ] && ARGS+=(--accent-color "$ACCENT")
           [ "$SAUCER" = "true" ] && ARGS+=(--generate-saucer)
           # extra CLI flags, split on whitespace by design
           read -ra EXTRA <<< "$EXTRA_ARGS"

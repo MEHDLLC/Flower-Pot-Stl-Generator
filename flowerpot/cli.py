@@ -65,6 +65,9 @@ def build_parser() -> argparse.ArgumentParser:
                 choices = list(DRAINAGE_PATTERNS)
             elif f.name == "surface_texture":
                 choices = list(TEXTURES)
+            elif f.name == "printer":
+                from .printers import PRINTER_CHOICES
+                choices = list(PRINTER_CHOICES)
             grp.add_argument(flag, dest=f.name, type=caster, default=None,
                              choices=choices, help=f"(default: {default})")
     return ap

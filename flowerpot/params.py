@@ -122,6 +122,11 @@ class PotParams:
     color: str = "terracotta"        # palette name or hex like "#B06040"
     accent_color: str = ""           # optional second color for the rim.
     #                                  Empty = single color everywhere.
+    printer: str = "creality-k1-max" # machine profile embedded in the .3mf so
+    #                                  Creality Print / Bambu Studio / OrcaSlicer
+    #                                  (and Creality Cloud's "Print Settings"
+    #                                  upload) recognise it as a print project.
+    #                                  "none" = plain geometry-only 3MF.
 
     # ------------------------------------------------------------------
     # 5. Print optimisation
@@ -205,6 +210,11 @@ class PotParams:
         if self.surface_texture != "none":
             if self.texture_depth < 0 or self.texture_cell <= 0:
                 raise ParameterError("texture_depth/texture_cell must be positive")
+        from .printers import PRINTER_CHOICES
+        if self.printer not in PRINTER_CHOICES:
+            raise ParameterError(
+                f"unknown printer {self.printer!r}; choose from {list(PRINTER_CHOICES)}"
+            )
         from .colors import parse_color
         try:
             parse_color(self.color)
