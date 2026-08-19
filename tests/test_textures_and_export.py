@@ -205,6 +205,25 @@ def test_project_3mf_carries_a_creality_machine(tmp_path, small_pot):
     assert "BambuStudio:3mfVersion" in xml
     assert 'transform="1 0 0 0 1 0 0 0 1 150.000 150.000 0"' in xml
     assert 'object_id" value="2"' in model_xml
+    # Creality Cloud's previewer requires the assemble block, with the same
+    # placement transform as the build item
+    assert ('assemble_item object_id="2" instance_id="0" '
+            'transform="1 0 0 0 1 0 0 0 1 150.000 150.000 0"') in model_xml
+    assert "mesh_stat" in model_xml
+
+
+def test_model_settings_is_valid_xml_with_and_without_thumbnail(tmp_path, small_pot):
+    import xml.dom.minidom as minidom
+    for i, thumb in enumerate((None, b"\x89PNG fake")):
+        path = write_3mf(tmp_path / f"m{i}.3mf", small_pot, color="teal",
+                         printer="creality-k1-max", thumbnail_png=thumb)
+        with zipfile.ZipFile(path) as zf:
+            ms = zf.read("Metadata/model_settings.config").decode()
+            minidom.parseString(ms)
+            # never reference plate thumbnails that are not in the package
+            for ref in ("Metadata/plate_1.png", "Metadata/plate_no_light_1.png"):
+                if ref in ms:
+                    assert ref in zf.namelist()
 
 
 def test_project_3mf_still_reads_as_a_plain_3mf(tmp_path, small_pot):
