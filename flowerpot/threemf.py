@@ -26,7 +26,8 @@ import numpy as np
 import trimesh
 
 from .colors import parse_color
-from .printers import bed_center, build_model_settings, build_project_settings
+from .printers import (bed_center, build_model_settings,
+                       build_project_settings, build_slice_info)
 
 _CONTENT_TYPES = """<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -74,9 +75,11 @@ def write_3mf(
     # build item carries no transform and consumers place it themselves
     item_attrs = ""
     slicer_meta = ""
+    transform = ""
     if printer is not None:
         cx, cy = bed_center(printer)
-        item_attrs = f' transform="1 0 0 0 1 0 0 0 1 {cx:.3f} {cy:.3f} 0" printable="1"'
+        transform = f"1 0 0 0 1 0 0 0 1 {cx:.3f} {cy:.3f} 0"
+        item_attrs = f' transform="{transform}" printable="1"'
         slicer_meta = (
             ' <metadata name="Application">OrcaSlicer-V2.1.1</metadata>\n'
             ' <metadata name="BambuStudio:3mfVersion">1</metadata>\n'
@@ -126,12 +129,15 @@ def write_3mf(
             zf.writestr("Metadata/project_settings.config",
                         build_project_settings(printer, color))
             zf.writestr("Metadata/model_settings.config",
-                        build_model_settings(2, name))
+                        build_model_settings(2, name, transform,
+                                             thumbnail_png is not None))
+            zf.writestr("Metadata/slice_info.config", build_slice_info())
         if thumbnail_png:
             zf.writestr("Metadata/thumbnail.png", thumbnail_png)
             if printer is not None:
-                # the name the slicer family uses for the plate preview
+                # the names the slicer family uses for the plate previews
                 zf.writestr("Metadata/plate_1.png", thumbnail_png)
+                zf.writestr("Metadata/plate_no_light_1.png", thumbnail_png)
     return path
 
 

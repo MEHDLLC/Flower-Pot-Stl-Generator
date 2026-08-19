@@ -133,24 +133,62 @@ def build_project_settings(printer_key: str, filament_color: str) -> str:
     return json.dumps(cfg, indent=1)
 
 
-def build_model_settings(object_id: int, name: str) -> str:
-    """``Metadata/model_settings.config``: one object on plate 1."""
+def build_model_settings(
+    object_id: int,
+    name: str,
+    transform: str,
+    has_thumbnail: bool,
+) -> str:
+    """``Metadata/model_settings.config``: one object on plate 1.
+
+    This mirrors what Bambu Studio / OrcaSlicer write, including the
+    ``<assemble>`` block - Creality Cloud's web previewer reads
+    ``assemble_item`` unconditionally and fails to render without it.
+    ``transform`` is the same 4x3 row-major matrix used on the build item,
+    so the assembled view matches the plate placement.
+    """
+    thumbs = ""
+    if has_thumbnail:
+        thumbs = (
+            '    <metadata key="thumbnail_file" value="Metadata/plate_1.png"/>\n'
+            '    <metadata key="thumbnail_no_light_file" value="Metadata/plate_no_light_1.png"/>\n'
+        )
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <config>
   <object id="{object_id}">
     <metadata key="name" value="{name}"/>
     <metadata key="extruder" value="1"/>
+    <part id="1" subtype="normal_part">
+      <metadata key="name" value="{name}"/>
+      <metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>
+      <mesh_stat edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/>
+    </part>
   </object>
   <plate>
     <metadata key="plater_id" value="1"/>
     <metadata key="plater_name" value=""/>
     <metadata key="locked" value="false"/>
-    <model_instance>
+{thumbs}    <model_instance>
       <metadata key="object_id" value="{object_id}"/>
       <metadata key="instance_id" value="0"/>
       <metadata key="identify_id" value="100"/>
     </model_instance>
   </plate>
+  <assemble>
+   <assemble_item object_id="{object_id}" instance_id="0" transform="{transform}" offset="0 0 0" />
+  </assemble>
+</config>
+"""
+
+
+def build_slice_info() -> str:
+    """Header-only ``Metadata/slice_info.config`` (the project is unsliced)."""
+    return """<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <header>
+    <header_item key="X-BBL-Client-Type" value="slicer"/>
+    <header_item key="X-BBL-Client-Version" value="02.01.01.52"/>
+  </header>
 </config>
 """
 
