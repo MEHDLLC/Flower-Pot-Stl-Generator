@@ -66,6 +66,7 @@ pick the product — each has its own *Run workflow* form:
 | **Generate · self-watering set** | outer reservoir pot + inner wick-cup liner |
 | **Generate · reservoir insert** | drop-in platform + fill tube for any existing pot |
 | **Generate · hydroponic tower** | stackable column segments with angled plant ports + net cups |
+| **Generate · modular garden** | dovetail-connected seed trays, the flower set, the rotating stack |
 
 Anything not on a form goes in *extra_args* exactly as you would type it on the CLI.
 Every run uploads an artifact with the `.stl`, the colored `.3mf` and a `.png`
@@ -271,6 +272,33 @@ Each workflow form has it too: the classic form's *Extras* picker
 (`saucer_and_jar` gives you both), and checkboxes on the self-watering and insert
 forms.
 
+## Modular garden
+
+![modular garden](docs/img/modular.png)
+
+`--modular-kit` generates dovetail-connected sets. All three kits share **one joint
+standard** — a vertical male rail that slides down into a slotted boss, with a
+42°-chamfered foot and a slot floor that keeps mated pieces level — so anything with
+a rail docks into anything with a boss, across kits:
+
+* **`seed_cubes`** — small seed-starting pots with four drainage holes each, male
+  rails on two faces and bosses on the opposite two. One run exports the single cube
+  plus fused **2×2, 3×3 and 4×4 trays** whose edges carry one connector per cell, so
+  singles and trays dock against each other at any offset. Tune `cube_size` (55) and
+  `cube_depth` (60).
+* **`flower`** — a round centre pot with five bosses at 72° and a petal pot whose
+  back is **concave to hug the centre's curve**. Print one centre + five petals and
+  the assembled set reads as a five-petal flower from above. Tune `flower_diameter`
+  (140).
+* **`stack`** — an open central hub (spigot on top, mouth below: the **round joint
+  rotates to any angle**) with four boss slots for clip-on pod pots. Print one hub +
+  four pods per level, stack as high as you like, twist each level to taste. Tune
+  `stack_pod_diameter` (70).
+
+The tests assemble every combination — a single docked on a tray edge, five petals
+around the centre, two hubs stacked at an arbitrary 37°, a pod clipped on a hub —
+and prove zero mesh intersection in each.
+
 ## Parameters
 
 All dimensions in **millimetres**, angles in **degrees**. Defaults in brackets.
@@ -338,6 +366,9 @@ producing a broken mesh.
 **Hydroponic tower** — `hydro_tower`, `tower_diameter` (110.0), `segment_height`
 (160.0), `ports_per_segment` (3), `port_bore` (50.0), `port_angle` (48.0),
 `drip_hole_diameter` (22.0).
+
+**Modular garden** — `modular_kit` (`"none"`), `cube_size` (55.0), `cube_depth`
+(60.0), `flower_diameter` (140.0), `stack_pod_diameter` (70.0).
 
 **Mesh quality** — `segments` (192 around the circumference; 128 is fast, 256 glassy) and
 `vertical_step` (1.5 mm between rings). The faceted style deliberately ignores
@@ -423,6 +454,7 @@ flowerpot/
   insert.py     the universal drop-in reservoir insert (platform + fill tube)
   hydro.py      the hydroponic tower (segments, net cups, cap)
   jar.py        the mason-jar greenhouse seat and collar ring
+  modular.py    the dovetail standard + seed cubes, flower set, rotating stack
   colors.py     the palette and hex parsing
   printers.py   machine profiles + the slicer project payload
   threemf.py    minimal colored-3MF writer (thumbnail + project settings)

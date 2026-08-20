@@ -90,6 +90,13 @@ PARAMS = dict(
     port_bore=50.0,           # net-cup socket diameter
     port_angle=48.0,          # cup tilt; below 46 would need supports
 
+    # -- modular garden kits (dovetail-connected sets) ------------------------
+    modular_kit="none",       # "seed_cubes" | "flower" | "stack"
+    cube_size=55.0,
+    cube_depth=60.0,
+    flower_diameter=140.0,
+    stack_pod_diameter=70.0,
+
     # -- matching drip saucer ----------------------------------------------
     generate_saucer=False,    # True also writes <name>_saucer.stl
     saucer_clearance=4.0,     # gap around the pot foot

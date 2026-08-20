@@ -64,7 +64,27 @@ def export_pot(
     else:
         outdir, single_stem = out, None
 
-    if params.hydro_tower:
+    if params.modular_kit != "none":
+        from functools import partial
+        from .modular import (build_flower_center, build_flower_petal,
+                              build_seed_tray, build_stack_hub, build_stack_pod)
+        jobs: list[tuple] = {
+            "seed_cubes": [
+                (partial(build_seed_tray, n=1), f"{name}_cube", False),
+                (partial(build_seed_tray, n=2), f"{name}_tray_2x2", False),
+                (partial(build_seed_tray, n=3), f"{name}_tray_3x3", False),
+                (partial(build_seed_tray, n=4), f"{name}_tray_4x4", False),
+            ],
+            "flower": [
+                (build_flower_center, f"{name}_flower_center", False),
+                (build_flower_petal, f"{name}_flower_petal", False),
+            ],
+            "stack": [
+                (build_stack_hub, f"{name}_stack_hub", False),
+                (build_stack_pod, f"{name}_stack_pod", False),
+            ],
+        }[params.modular_kit]
+    elif params.hydro_tower:
         from .hydro import build_hydro_cap, build_hydro_cup, build_hydro_segment
         jobs: list[tuple] = [
             (build_hydro_segment, f"{name}_segment", False),
