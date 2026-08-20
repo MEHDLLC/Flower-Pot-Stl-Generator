@@ -56,7 +56,7 @@ on:
         description: "Companion pieces"
         type: choice
         default: none
-        options: [none, saucer, self_watering]
+        options: [none, saucer, self_watering, reservoir_insert]
       extra_args:
         description: "Extra CLI flags (see README / python -m flowerpot --help)"
         type: string
@@ -106,6 +106,7 @@ jobs:
           )
           [ "$COMPANION" = "saucer" ] && ARGS+=(--generate-saucer)
           [ "$COMPANION" = "self_watering" ] && ARGS+=(--self-watering)
+          [ "$COMPANION" = "reservoir_insert" ] && ARGS+=(--reservoir-insert)
           # extra CLI flags, split on whitespace by design
           read -ra EXTRA <<< "$EXTRA_ARGS"
           python -m flowerpot "${ARGS[@]}" "${EXTRA[@]}" | tee report.txt

@@ -64,9 +64,15 @@ def export_pot(
     else:
         outdir, single_stem = out, None
 
-    if params.self_watering:
-        from .selfwatering import build_self_watering_inner, build_self_watering_outer
+    if params.reservoir_insert:
+        from .insert import build_insert_platform, build_insert_tube
         jobs: list[tuple] = [
+            (build_insert_platform, f"{name}_insert", False),
+            (build_insert_tube, f"{name}_insert_tube", False),
+        ]
+    elif params.self_watering:
+        from .selfwatering import build_self_watering_inner, build_self_watering_outer
+        jobs = [
             (build_self_watering_outer, f"{name}_outer", True),
             (build_self_watering_inner, f"{name}_inner", False),
         ]

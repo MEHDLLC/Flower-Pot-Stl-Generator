@@ -66,6 +66,18 @@ def selfwatering_figure(out: Path) -> None:
     mesh_grid(cases, out / "selfwatering.png")
 
 
+def insert_figure(out: Path) -> None:
+    from flowerpot.insert import build_insert_platform, build_insert_tube
+    cases = []
+    for shape in ("round", "square", "hexagonal"):
+        p = PotParams(reservoir_insert=True, insert_shape=shape, **FAST)
+        cases.append((f"platform ({shape})", build_insert_platform(p), "charcoal"))
+    cases.append(("fill tube",
+                  build_insert_tube(PotParams(reservoir_insert=True, **FAST)),
+                  "charcoal"))
+    mesh_grid(cases, out / "insert.png")
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -76,6 +88,7 @@ def main(outdir: str = "docs/img") -> None:
         out / "textures.png",
     )
     selfwatering_figure(out)
+    insert_figure(out)
 
 
 if __name__ == "__main__":
