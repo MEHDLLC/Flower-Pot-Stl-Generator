@@ -1,0 +1,60 @@
+# Actions -> "Generate · reservoir insert" -> Run workflow.
+# Drop-in platform + fill tube that makes any WATERTIGHT pot self-watering
+# (the pot's own bottom becomes the tank). Measure your pot's inside width
+# where the platform will sit - across the flats for polygon shapes.
+name: "Generate · reservoir insert"
+
+on:
+  workflow_dispatch:
+    inputs:
+      insert_shape:
+        description: "Outline - mirror your pot's cross-section"
+        type: choice
+        default: round
+        options: [round, square, hexagonal, octagon]
+      insert_width:
+        description: "Pot INSIDE width in mm (across flats for polygons)"
+        type: string
+        default: "120"
+      reservoir_height:
+        description: "Water depth in mm"
+        type: string
+        default: "35"
+      insert_tube_length:
+        description: "Fill tube length in mm (pot floor to above the soil)"
+        type: string
+        default: "150"
+      refill_tube_bore:
+        description: "Fill tube inner diameter in mm"
+        type: string
+        default: "16"
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: charcoal
+      printer:
+        description: "Printer profile embedded in the .3mf"
+        type: choice
+        default: creality-k1-max
+        options: [creality-k1-max, creality-k1, creality-ender3-v3-ke, none]
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  insert:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Reservoir insert: ${{ inputs.insert_shape }}, ${{ inputs.insert_width }} mm"
+      artifact: "insert-${{ inputs.insert_shape }}"
+      cli_args: >-
+        --reservoir-insert
+        --insert-shape ${{ inputs.insert_shape }}
+        --insert-width ${{ inputs.insert_width }}
+        --reservoir-height ${{ inputs.reservoir_height }}
+        --insert-tube-length ${{ inputs.insert_tube_length }}
+        --refill-tube-bore ${{ inputs.refill_tube_bore }}
+        --color ${{ inputs.color }}
+        --printer ${{ inputs.printer }}
+        ${{ inputs.extra_args }}

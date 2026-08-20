@@ -57,12 +57,20 @@ python -m flowerpot --config mypot.json                      # and reuse them
 The CLI exits non-zero and refuses to write a file if the print audit fails; pass
 `--force` to write it anyway.
 
-**Option C — GitHub Actions, no local install.** Open the repo's **Actions** tab, pick
-**“Generate flower pot”**, hit *Run workflow* and choose your style, texture, color and
-dimensions from the form (anything else goes in *extra_args* exactly as you would type
-it on the CLI). The finished run offers a downloadable artifact containing the `.stl`,
-the colored `.3mf` and a `.png` preview, and the job summary shows the full print
-audit. A second workflow (`tests`) runs the suite on every push.
+**Option C — GitHub Actions, no local install.** Open the repo's **Actions** tab and
+pick the product — each has its own *Run workflow* form:
+
+| Workflow | What it makes |
+|---|---|
+| **Generate · classic pot** | the original pots: styles, textures, drainage, optional drip saucer |
+| **Generate · self-watering set** | outer reservoir pot + inner wick-cup liner |
+| **Generate · reservoir insert** | drop-in platform + fill tube for any existing pot |
+
+Anything not on a form goes in *extra_args* exactly as you would type it on the CLI.
+Every run uploads an artifact with the `.stl`, the colored `.3mf` and a `.png`
+preview, and the job summary shows the full print audit — all three forms share one
+generation job (`generate-common.yml`), so they cannot drift apart. A `tests`
+workflow runs the suite on every push.
 
 **Option D — as a library.**
 
