@@ -35,6 +35,37 @@ def grid(cases: list[tuple[str, PotParams]], path: Path) -> None:
     print(f"-> {path}")
 
 
+def mesh_grid(cases, path: Path) -> None:
+    """Like grid(), but for prebuilt meshes."""
+    fig = plt.figure(figsize=(4 * len(cases), 4.6), dpi=110)
+    for i, (label, mesh, color) in enumerate(cases):
+        ax = fig.add_subplot(1, len(cases), i + 1, projection="3d")
+        render_to_axes(ax, mesh, hex_to_rgb01(color))
+        ax.set_title(label, fontsize=13, pad=-2)
+        print(f"rendered {label}")
+    fig.subplots_adjust(left=0.01, right=0.99, top=1.0, bottom=0.0, wspace=0.02)
+    fig.savefig(path, facecolor="white")
+    print(f"-> {path}")
+
+
+def selfwatering_figure(out: Path) -> None:
+    from flowerpot.selfwatering import (build_self_watering_inner,
+                                        build_self_watering_outer)
+    p = PotParams(self_watering=True, **FAST)
+    outer = build_self_watering_outer(p)
+    inner = build_self_watering_inner(p)
+    cases = [("outer: reservoir + refill tube", outer, "teal"),
+             ("inner: wick-cup liner", inner, "teal")]
+    try:                    # the cutaway needs shapely+rtree; skip if absent
+        import trimesh
+        half = trimesh.intersections.slice_mesh_plane(
+            inner, plane_normal=[0, -1, 0], plane_origin=[0, 0, 0], cap=True)
+        cases.append(("inner, cut open", half, "sand"))
+    except BaseException as exc:
+        print(f"skipping cutaway ({exc})")
+    mesh_grid(cases, out / "selfwatering.png")
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -44,6 +75,7 @@ def main(outdir: str = "docs/img") -> None:
          for t in TEXTURES if t != "none"],
         out / "textures.png",
     )
+    selfwatering_figure(out)
 
 
 if __name__ == "__main__":

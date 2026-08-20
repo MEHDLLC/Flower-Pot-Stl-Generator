@@ -140,6 +140,18 @@ class PotParams:
     #                                    Setting False lets the style texture wrap the base.
 
     # ------------------------------------------------------------------
+    # 5b. Self-watering set (exports <name>_outer and <name>_inner)
+    # ------------------------------------------------------------------
+    self_watering: bool = False      # two-piece set: outer reservoir pot with a
+    #                                  refill tube + funnel, inner plant liner
+    #                                  standing on a wick cup, rims flush.
+    reservoir_height: float = 35.0   # water depth the outer pot holds, in mm.
+    sw_wall_gap: float = 5.0         # radial gap between inner and outer walls
+    refill_tube_bore: float = 16.0   # inner diameter of the refill tube
+    wick_hole_radius: float = 4.0    # rope holes around the inner pot's cup
+    num_wick_holes: int = 3          # how many rope holes
+
+    # ------------------------------------------------------------------
     # 6. Matching drip saucer (exported as a second STL)
     # ------------------------------------------------------------------
     generate_saucer: bool = False
@@ -290,6 +302,17 @@ class PotParams:
                 )
         if self.accent_color and not self.add_top_rim:
             warn.append("accent_color colors the rim, but add_top_rim is off")
+        if self.self_watering:
+            if self.pot_style == "low_poly_faceted":
+                raise ParameterError(
+                    "self_watering cannot use a low_poly_faceted outer pot - "
+                    "its rotating facets leave no straight wall line for the "
+                    "refill tube"
+                )
+            if not 8.0 <= self.refill_tube_bore <= 30.0:
+                raise ParameterError("refill_tube_bore should be 8-30 mm")
+            if self.generate_saucer:
+                warn.append("generate_saucer is ignored for a self-watering set")
         return warn
 
     # -- dict / json ---------------------------------------------------

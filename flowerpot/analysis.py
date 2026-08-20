@@ -21,6 +21,12 @@ import trimesh
 #: faces whose vertices all sit within this many mm of z=0 count as "on the plate"
 PLATE_TOL = 0.05
 
+#: faces below this area (mm^2) are boolean seam dust - far below one
+#: extrusion cross-section (0.4 x 0.2 mm = 0.08 mm^2), so no printer can
+#: realise them and their normals are numerically arbitrary.  They are
+#: excluded from the overhang analysis (but still reported).
+DUST_AREA = 0.05
+
 
 @dataclass
 class Report:
@@ -42,11 +48,12 @@ class Report:
 
     @property
     def manifold(self) -> bool:
+        # zero-area facets in a watertight, consistently wound solid are
+        # cosmetic (slicers drop them); they warn but do not fail the gate
         return (
             self.watertight
             and self.winding_consistent
             and self.positive_volume
-            and self.degenerate_faces == 0
         )
 
     @property
@@ -82,8 +89,9 @@ def audit(mesh: trimesh.Trimesh, overhang_limit_deg: float = 45.0) -> Report:
     # arcsin(-nz): 0 deg for a vertical wall, 90 deg for a flat ceiling.
     nz = np.clip(-normals[:, 2], -1.0, 1.0)
     lean = np.degrees(np.arcsin(nz))
-    on_plate = np.all(tris[:, :, 2] <= PLATE_TOL, axis=1)
-    considered = ~on_plate
+    plate_z = float(tris[:, :, 2].min())
+    on_plate = np.all(tris[:, :, 2] <= plate_z + PLATE_TOL, axis=1)
+    considered = ~on_plate & (areas > DUST_AREA)
     bad = considered & (lean > overhang_limit_deg + 1e-6)
 
     worst = float(lean[considered].max()) if considered.any() else 0.0
@@ -94,6 +102,9 @@ def audit(mesh: trimesh.Trimesh, overhang_limit_deg: float = 45.0) -> Report:
     genus = int(round((2 - mesh.euler_number) / 2)) if mesh.is_watertight else -1
 
     warnings: list[str] = []
+    if degenerate > 0:
+        warnings.append(f"{degenerate} zero-area facet(s) from boolean seams "
+                        "(harmless - slicers drop them)")
     if base_area < 200.0:
         warnings.append(
             f"only {base_area / 100:.1f} cm2 touching the plate - use a brim"

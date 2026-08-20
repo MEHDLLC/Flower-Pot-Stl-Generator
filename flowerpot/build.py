@@ -91,7 +91,8 @@ def lathe(
 
 def _boolean(op: str, meshes: list[trimesh.Trimesh]) -> trimesh.Trimesh:
     fn = {"difference": trimesh.boolean.difference,
-          "union": trimesh.boolean.union}[op]
+          "union": trimesh.boolean.union,
+          "intersection": trimesh.boolean.intersection}[op]
     try:
         return fn(meshes, engine=BOOLEAN_ENGINE)
     except Exception as exc:                                  # pragma: no cover
@@ -256,17 +257,28 @@ def build_saucer(p: PotParams) -> trimesh.Trimesh:
     return _finish(_boolean("difference", [body, cavity]))
 
 
-def _finish(mesh: trimesh.Trimesh) -> trimesh.Trimesh:
-    """Tidy a boolean result and drop it on the build plate."""
-    mesh.process(validate=True)
-    mesh.remove_unreferenced_vertices()
-    mesh.merge_vertices()
+def _finish(mesh: trimesh.Trimesh, center: bool = True) -> trimesh.Trimesh:
+    """Tidy a boolean result and drop it on the build plate.
+
+    The repair passes only run when the mesh actually needs them: an exact
+    boolean can emit legitimate sliver triangles (e.g. where a trim plane
+    grazes a union seam), and ``process(validate=True)`` would delete those
+    as "degenerate" - tearing holes into a mesh that was watertight.
+    """
+    if not (mesh.is_watertight and mesh.is_winding_consistent):
+        mesh.process(validate=True)
+        mesh.remove_unreferenced_vertices()
+        mesh.merge_vertices()
     if not mesh.is_winding_consistent:
         mesh.fix_normals()
     if mesh.volume < 0:
         mesh.invert()
-    # sit exactly on z = 0, centred in x/y
+    # sit exactly on z = 0; recentre in x/y unless the caller keeps the pot
+    # axis at the origin (asymmetric adds like the refill tube would drag
+    # the bounding-box centre - and the cavity - off axis)
     lo = mesh.bounds[0]
     hi = mesh.bounds[1]
-    mesh.apply_translation((-(lo[0] + hi[0]) / 2.0, -(lo[1] + hi[1]) / 2.0, -lo[2]))
+    dx = -(lo[0] + hi[0]) / 2.0 if center else 0.0
+    dy = -(lo[1] + hi[1]) / 2.0 if center else 0.0
+    mesh.apply_translation((dx, dy, -lo[2]))
     return mesh
