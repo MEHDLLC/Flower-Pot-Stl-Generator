@@ -64,9 +64,16 @@ def export_pot(
     else:
         outdir, single_stem = out, None
 
-    if params.reservoir_insert:
-        from .insert import build_insert_platform, build_insert_tube
+    if params.hydro_tower:
+        from .hydro import build_hydro_cap, build_hydro_cup, build_hydro_segment
         jobs: list[tuple] = [
+            (build_hydro_segment, f"{name}_segment", False),
+            (build_hydro_cup, f"{name}_cup", False),
+            (build_hydro_cap, f"{name}_cap", False),
+        ]
+    elif params.reservoir_insert:
+        from .insert import build_insert_platform, build_insert_tube
+        jobs = [
             (build_insert_platform, f"{name}_insert", False),
             (build_insert_tube, f"{name}_insert_tube", False),
         ]

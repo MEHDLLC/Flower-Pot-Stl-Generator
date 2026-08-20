@@ -166,6 +166,20 @@ class PotParams:
     #                                    floor to above the soil line
 
     # ------------------------------------------------------------------
+    # 5d. Hydroponic tower (exports <name>_segment, _cup and _cap)
+    # ------------------------------------------------------------------
+    hydro_tower: bool = False        # stackable column segments with angled
+    #                                  side ports; plants grow out of net cups
+    tower_diameter: float = 110.0    # column outside diameter
+    segment_height: float = 160.0    # one stackable segment
+    ports_per_segment: int = 3       # plant ports, spiralling up the column
+    port_bore: float = 50.0          # socket diameter the net cups drop into
+    port_angle: float = 48.0         # cup tilt above horizontal.  The port's
+    #                                  worst overhang is 90 - port_angle, so
+    #                                  anything under 46 needs supports.
+    drip_hole_diameter: float = 22.0 # hole in the cap for the drip line
+
+    # ------------------------------------------------------------------
     # 6. Matching drip saucer (exported as a second STL)
     # ------------------------------------------------------------------
     generate_saucer: bool = False
@@ -327,6 +341,11 @@ class PotParams:
                 raise ParameterError("refill_tube_bore should be 8-30 mm")
             if self.generate_saucer:
                 warn.append("generate_saucer is ignored for a self-watering set")
+        if self.hydro_tower and (self.self_watering or self.reservoir_insert):
+            raise ParameterError(
+                "hydro_tower cannot combine with self_watering or "
+                "reservoir_insert - generate them separately"
+            )
         if self.reservoir_insert:
             if self.self_watering:
                 raise ParameterError(

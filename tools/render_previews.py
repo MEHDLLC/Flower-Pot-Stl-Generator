@@ -78,6 +78,22 @@ def insert_figure(out: Path) -> None:
     mesh_grid(cases, out / "insert.png")
 
 
+def hydro_figure(out: Path) -> None:
+    import trimesh
+    from flowerpot.hydro import (_SPIGOT_H, build_hydro_cap, build_hydro_cup,
+                                 build_hydro_segment)
+    p = PotParams(hydro_tower=True, **FAST)
+    seg = build_hydro_segment(p)
+    upper = seg.copy()
+    upper.apply_translation((0, 0, p.segment_height - _SPIGOT_H))
+    mesh_grid([
+        ("segment", seg, "sage"),
+        ("two stacked", trimesh.util.concatenate([seg, upper]), "sage"),
+        ("net cup", build_hydro_cup(p), "sand"),
+        ("cap", build_hydro_cap(p), "sage"),
+    ], out / "hydro.png")
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -89,6 +105,7 @@ def main(outdir: str = "docs/img") -> None:
     )
     selfwatering_figure(out)
     insert_figure(out)
+    hydro_figure(out)
 
 
 if __name__ == "__main__":

@@ -82,6 +82,14 @@ PARAMS = dict(
     #                            "creality-k1", "creality-ender3-v3-ke", or
     #                            "none" for a plain geometry-only 3MF
 
+    # -- hydroponic tower (writes <name>_segment, _cup and _cap) -------------
+    hydro_tower=False,        # stackable column segments with angled ports
+    tower_diameter=110.0,
+    segment_height=160.0,
+    ports_per_segment=3,
+    port_bore=50.0,           # net-cup socket diameter
+    port_angle=48.0,          # cup tilt; below 46 would need supports
+
     # -- matching drip saucer ----------------------------------------------
     generate_saucer=False,    # True also writes <name>_saucer.stl
     saucer_clearance=4.0,     # gap around the pot foot
