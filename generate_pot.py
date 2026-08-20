@@ -86,6 +86,14 @@ PARAMS = dict(
     generate_saucer=False,    # True also writes <name>_saucer.stl
     saucer_clearance=4.0,     # gap around the pot foot
 
+    # -- self-watering set (writes <name>_outer.* and <name>_inner.*) --------
+    self_watering=False,      # outer reservoir pot with refill tube + funnel,
+    #                           inner liner standing on a wick cup, rims flush
+    reservoir_height=35.0,    # water depth the outer pot holds
+    refill_tube_bore=16.0,    # inner diameter of the refill tube
+    wick_hole_radius=4.0,     # rope holes around the inner pot's cup
+    num_wick_holes=3,
+
     # -- mesh quality -------------------------------------------------------
     segments=192,             # around the circumference: 128 fast, 256 glassy
     vertical_step=1.5,        # mm between rings up the wall

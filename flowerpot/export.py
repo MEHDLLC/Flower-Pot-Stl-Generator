@@ -64,16 +64,24 @@ def export_pot(
     else:
         outdir, single_stem = out, None
 
-    jobs: list[tuple] = [(build_pot, name, True)]
-    if params.generate_saucer:
-        jobs.append((build_saucer, f"{name}_saucer", False))
+    if params.self_watering:
+        from .selfwatering import build_self_watering_inner, build_self_watering_outer
+        jobs: list[tuple] = [
+            (build_self_watering_outer, f"{name}_outer", True),
+            (build_self_watering_inner, f"{name}_inner", False),
+        ]
+    else:
+        jobs = [(build_pot, name, True)]
+        if params.generate_saucer:
+            jobs.append((build_saucer, f"{name}_saucer", False))
 
     # the accent color goes on the rim, whose foot height comes from the profile
     rim_z = build_profiles(params).decoration_freeze_z if params.accent_color else None
 
     for builder, stem, is_pot in jobs:
         if single_stem is not None:
-            stem = single_stem if is_pot else f"{single_stem}_saucer"
+            suffix = stem[len(name):] if stem.startswith(name) else ""
+            stem = single_stem + suffix
 
         mesh = builder(params)
         report = audit(mesh, params.overhang_limit_deg)

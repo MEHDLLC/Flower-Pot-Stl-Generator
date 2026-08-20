@@ -2,9 +2,10 @@
 
 Procedurally generate **watertight, 3D-printable flower pots** as `.STL` or colored
 `.3mf` files from a handful of parameters. Four design styles, four surface textures,
-four drainage layouts, an optional rim and a matching drip saucer — every export is
-checked for manifoldness and unsupported overhangs *before* it is written to disk.
-Runs locally or straight from a **GitHub Actions workflow**, no install needed.
+four drainage layouts, an optional rim, a matching drip saucer, and a two-piece
+**self-watering set** — every export is checked for manifoldness and unsupported
+overhangs *before* it is written to disk. Runs locally or straight from a
+**GitHub Actions workflow**, no install needed.
 
 ![the four pot styles](docs/img/styles.png)
 ![the surface textures](docs/img/textures.png)
@@ -143,6 +144,37 @@ the payload as a starting point - anything can be adjusted after opening. The
 geometry stays inline in the standard `3D/3dmodel.model`, so the file remains an
 ordinary valid 3MF for every other consumer.
 
+## Self-watering set
+
+![self-watering set](docs/img/selfwatering.png)
+
+`--self-watering` swaps the single pot for a two-piece set, exported as
+`<name>_outer.*` and `<name>_inner.*`:
+
+* the **outer pot** (your style, texture and color) is watertight and holds the
+  reservoir. A refill tube runs up the outside of the wall — leaning with the taper so
+  it stays fused at every height — ending in a funnel above the rim; a port near the
+  floor connects it to the reservoir. Pour into the funnel to top up the water.
+* the **inner pot** is the plant liner. Its floor is a 50° cone descending to a central
+  **wick cup**, which is also what it stands on — soil sits above the water line
+  ("propped up"), and the two rims end flush. Thread cotton rope through the wick
+  holes around the cup so it hangs into the water; notches at the cup's foot let the
+  water level equalise into the cup for bottom-watering.
+
+Both pieces print upright with no supports (the port and notches are diamond-shaped
+for exactly that reason), and the tests prove the inner drops into the outer without
+touching — including the boolean intersection of the assembled pair.
+
+Tune with `reservoir_height` (35 mm — how much water the outer holds),
+`refill_tube_bore` (16 mm), `wick_hole_radius` (4 mm), `num_wick_holes` (3) and
+`sw_wall_gap` (5 mm between the walls). `low_poly_faceted` cannot host the refill tube
+(its facets rotate with height), any other style works:
+
+```bash
+python -m flowerpot --self-watering --pot-style hexagonal --surface-texture honeycomb \
+    --color sage --format both --preview
+```
+
 ## Parameters
 
 All dimensions in **millimetres**, angles in **degrees**. Defaults in brackets.
@@ -198,6 +230,9 @@ producing a broken mesh.
 
 **Saucer** — `generate_saucer`, `saucer_clearance` (4.0), `saucer_height` (20.0),
 `saucer_wall` (3.0), `saucer_base` (4.0). Written as `<name>_saucer.*`.
+
+**Self-watering** — `self_watering`, `reservoir_height` (35.0), `sw_wall_gap` (5.0),
+`refill_tube_bore` (16.0), `wick_hole_radius` (4.0), `num_wick_holes` (3).
 
 **Mesh quality** — `segments` (192 around the circumference; 128 is fast, 256 glassy) and
 `vertical_step` (1.5 mm between rings). The faceted style deliberately ignores
@@ -279,6 +314,7 @@ flowerpot/
   textures.py   the relief patterns (herringbone, honeycomb, diamonds, waves)
   build.py      sweeping, booleans, drainage, the saucer
   analysis.py   the print-readiness audit
+  selfwatering.py the two-piece self-watering set (reservoir, tube, wick cup)
   colors.py     the palette and hex parsing
   printers.py   machine profiles + the slicer project payload
   threemf.py    minimal colored-3MF writer (thumbnail + project settings)

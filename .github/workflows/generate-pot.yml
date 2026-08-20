@@ -52,10 +52,11 @@ on:
         type: choice
         default: ring
         options: [ring, center, grid, none]
-      generate_saucer:
-        description: "Also generate a matching drip saucer"
-        type: boolean
-        default: false
+      companion:
+        description: "Companion pieces"
+        type: choice
+        default: none
+        options: [none, saucer, self_watering]
       extra_args:
         description: "Extra CLI flags (see README / python -m flowerpot --help)"
         type: string
@@ -89,7 +90,7 @@ jobs:
           TOP_D: ${{ inputs.top_diameter || '150' }}
           BOTTOM_D: ${{ inputs.bottom_diameter || '105' }}
           DRAINAGE: ${{ inputs.drainage_pattern || 'ring' }}
-          SAUCER: ${{ inputs.generate_saucer }}
+          COMPANION: ${{ inputs.companion || 'none' }}
           EXTRA_ARGS: ${{ inputs.extra_args }}
         run: |
           ARGS=(
@@ -103,7 +104,8 @@ jobs:
             --printer "$PRINTER"
             --format both --preview --out out/
           )
-          [ "$SAUCER" = "true" ] && ARGS+=(--generate-saucer)
+          [ "$COMPANION" = "saucer" ] && ARGS+=(--generate-saucer)
+          [ "$COMPANION" = "self_watering" ] && ARGS+=(--self-watering)
           # extra CLI flags, split on whitespace by design
           read -ra EXTRA <<< "$EXTRA_ARGS"
           python -m flowerpot "${ARGS[@]}" "${EXTRA[@]}" | tee report.txt
