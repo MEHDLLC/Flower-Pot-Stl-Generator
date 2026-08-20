@@ -1,19 +1,19 @@
-# Actions -> "Generate · classic pot" -> Run workflow.
-# The original pots: four styles, textures, drainage, optional drip saucer.
-# Anything not on the form goes in extra_args exactly as on the CLI, e.g.
-#   --wall-thickness 3.6 --rib-twist-degrees 60 --accent-color sand
-name: "Generate · classic pot"
+# Actions -> "Generate · self-watering set" -> Run workflow.
+# Two pieces: outer reservoir pot with refill tube + funnel, inner wick-cup
+# liner, rims flush. low_poly_faceted cannot host the tube, so it is not
+# offered here. Fine-tuning (wick holes, wall gap, ...) via extra_args.
+name: "Generate · self-watering set"
 
 on:
   workflow_dispatch:
     inputs:
       pot_style:
-        description: "Pot style"
+        description: "Outer pot style"
         type: choice
         default: classic_tapered
-        options: [classic_tapered, low_poly_faceted, ribbed_spiral, hexagonal]
+        options: [classic_tapered, ribbed_spiral, hexagonal]
       surface_texture:
-        description: "Surface texture"
+        description: "Outer surface texture"
         type: choice
         default: none
         options: [none, herringbone, honeycomb, diamonds, waves]
@@ -38,27 +38,27 @@ on:
         description: "Bottom diameter in mm"
         type: string
         default: "105"
-      drainage_pattern:
-        description: "Drainage holes"
-        type: choice
-        default: ring
-        options: [ring, center, grid, none]
-      saucer:
-        description: "Also generate a matching drip saucer"
-        type: boolean
-        default: false
+      reservoir_height:
+        description: "Water depth in mm"
+        type: string
+        default: "35"
+      refill_tube_bore:
+        description: "Refill tube inner diameter in mm"
+        type: string
+        default: "16"
       extra_args:
         description: "Extra CLI flags (see README)"
         type: string
         default: ""
 
 jobs:
-  pot:
+  set:
     uses: ./.github/workflows/generate-common.yml
     with:
-      title: "Classic pot: ${{ inputs.pot_style }}"
-      artifact: "pot-${{ inputs.pot_style }}"
+      title: "Self-watering set: ${{ inputs.pot_style }}"
+      artifact: "sw-${{ inputs.pot_style }}"
       cli_args: >-
+        --self-watering
         --pot-style ${{ inputs.pot_style }}
         --surface-texture ${{ inputs.surface_texture }}
         --color ${{ inputs.color }}
@@ -66,6 +66,6 @@ jobs:
         --height ${{ inputs.height }}
         --top-diameter ${{ inputs.top_diameter }}
         --bottom-diameter ${{ inputs.bottom_diameter }}
-        --drainage-pattern ${{ inputs.drainage_pattern }}
-        ${{ inputs.saucer && '--generate-saucer' || '' }}
+        --reservoir-height ${{ inputs.reservoir_height }}
+        --refill-tube-bore ${{ inputs.refill_tube_bore }}
         ${{ inputs.extra_args }}
