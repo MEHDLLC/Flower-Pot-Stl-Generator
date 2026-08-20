@@ -1,0 +1,63 @@
+# Actions -> "Generate · hydroponic tower" -> Run workflow.
+# Stackable column segments with angled plant ports, plus the matching
+# slotted net cup and a top cap with a drip-line hole. Print one segment
+# per level, ports_per_segment cups per segment, one cap. The reservoir
+# is any watertight vessel the bottom segment stands in (e.g. a classic
+# pot generated with drainage "none").
+name: "Generate · hydroponic tower"
+
+on:
+  workflow_dispatch:
+    inputs:
+      tower_diameter:
+        description: "Column outside diameter in mm"
+        type: string
+        default: "110"
+      segment_height:
+        description: "Height of one stackable segment in mm"
+        type: string
+        default: "160"
+      ports_per_segment:
+        description: "Plant ports per segment"
+        type: choice
+        default: "3"
+        options: ["1", "2", "3", "4"]
+      port_bore:
+        description: "Port socket diameter in mm (the net cups match it)"
+        type: string
+        default: "50"
+      port_angle:
+        description: "Cup tilt above horizontal (46+ prints support-free)"
+        type: string
+        default: "48"
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: sage
+      printer:
+        description: "Printer profile embedded in the .3mf"
+        type: choice
+        default: creality-k1-max
+        options: [creality-k1-max, creality-k1, creality-ender3-v3-ke, none]
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  tower:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Hydroponic tower: ${{ inputs.tower_diameter }} mm column"
+      artifact: "hydro-tower"
+      cli_args: >-
+        --hydro-tower
+        --name tower
+        --tower-diameter ${{ inputs.tower_diameter }}
+        --segment-height ${{ inputs.segment_height }}
+        --ports-per-segment ${{ inputs.ports_per_segment }}
+        --port-bore ${{ inputs.port_bore }}
+        --port-angle ${{ inputs.port_angle }}
+        --color ${{ inputs.color }}
+        --printer ${{ inputs.printer }}
+        ${{ inputs.extra_args }}

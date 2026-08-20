@@ -65,6 +65,7 @@ pick the product — each has its own *Run workflow* form:
 | **Generate · classic pot** | the original pots: styles, textures, drainage, optional drip saucer |
 | **Generate · self-watering set** | outer reservoir pot + inner wick-cup liner |
 | **Generate · reservoir insert** | drop-in platform + fill tube for any existing pot |
+| **Generate · hydroponic tower** | stackable column segments with angled plant ports + net cups |
 
 Anything not on a form goes in *extra_args* exactly as you would type it on the CLI.
 Every run uploads an artifact with the `.stl`, the colored `.3mf` and a `.png`
@@ -216,6 +217,32 @@ python -m flowerpot --reservoir-insert --insert-shape square --insert-width 110 
 rounded corners accounted for), `insert_tube_length`, plus the shared
 `reservoir_height` and `refill_tube_bore`.
 
+## Hydroponic tower
+
+![hydroponic tower](docs/img/hydro.png)
+
+`--hydro-tower` generates a vertical hydroponic garden: **stackable column
+segments** whose chamfered spigots drop into the mouth of the segment below, with
+plant ports spiralling up the column, plus the matching **slotted net cup** and a
+**top cap** with a drip-line hole. Print one segment per level and
+`ports_per_segment` cups per segment; the bottom segment stands in any watertight
+vessel (a classic pot with `--drainage-pattern none` works).
+
+The port angle is where printability lives: a round port tilted A° above horizontal
+has its worst overhang at 90 − A°, so the default `port_angle` 48 lands at 42° —
+inside the no-support budget. Anything below 46 is rejected rather than silently
+printing badly, and the geometry keeps the top port's shroud clear of the stacking
+zone (the tests stack two segments and prove zero intersection).
+
+Tune with `tower_diameter` (110), `segment_height` (160), `ports_per_segment` (3),
+`port_bore` (50 — the cups are sized to match), `port_angle` (48) and
+`drip_hole_diameter` (22):
+
+```bash
+python -m flowerpot --hydro-tower --name tower --ports-per-segment 4 \
+    --tower-diameter 125 --segment-height 180 --color sage
+```
+
 ## Parameters
 
 All dimensions in **millimetres**, angles in **degrees**. Defaults in brackets.
@@ -277,6 +304,10 @@ producing a broken mesh.
 
 **Reservoir insert** — `reservoir_insert`, `insert_shape` (`"round"`),
 `insert_width` (120.0), `insert_tube_length` (150.0).
+
+**Hydroponic tower** — `hydro_tower`, `tower_diameter` (110.0), `segment_height`
+(160.0), `ports_per_segment` (3), `port_bore` (50.0), `port_angle` (48.0),
+`drip_hole_diameter` (22.0).
 
 **Mesh quality** — `segments` (192 around the circumference; 128 is fast, 256 glassy) and
 `vertical_step` (1.5 mm between rings). The faceted style deliberately ignores
@@ -360,6 +391,7 @@ flowerpot/
   analysis.py   the print-readiness audit
   selfwatering.py the two-piece self-watering set (reservoir, tube, wick cup)
   insert.py     the universal drop-in reservoir insert (platform + fill tube)
+  hydro.py      the hydroponic tower (segments, net cups, cap)
   colors.py     the palette and hex parsing
   printers.py   machine profiles + the slicer project payload
   threemf.py    minimal colored-3MF writer (thumbnail + project settings)
