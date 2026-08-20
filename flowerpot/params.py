@@ -140,6 +140,16 @@ class PotParams:
     #                                    Setting False lets the style texture wrap the base.
 
     # ------------------------------------------------------------------
+    # 5a. Mason-jar greenhouse seat (classic pot, self-watering inner,
+    #     or a standalone collar ring with the reservoir insert)
+    # ------------------------------------------------------------------
+    jar_greenhouse: bool = False     # seat an upside-down canning jar over
+    #                                  the seedling as a mini greenhouse
+    jar_mouth_od: float = 86.0       # jar OUTSIDE mouth diameter: ~86 for US
+    #                                  wide-mouth canning jars, ~70 regular
+    jar_seat_depth: float = 10.0     # groove depth holding the jar's lip
+
+    # ------------------------------------------------------------------
     # 5b. Self-watering set (exports <name>_outer and <name>_inner)
     # ------------------------------------------------------------------
     self_watering: bool = False      # two-piece set: outer reservoir pot with a
@@ -341,6 +351,11 @@ class PotParams:
                 raise ParameterError("refill_tube_bore should be 8-30 mm")
             if self.generate_saucer:
                 warn.append("generate_saucer is ignored for a self-watering set")
+        if self.jar_greenhouse and self.hydro_tower:
+            raise ParameterError(
+                "jar_greenhouse is not available on the hydro tower - use it "
+                "with the classic pot, self-watering set or reservoir insert"
+            )
         if self.hydro_tower and (self.self_watering or self.reservoir_insert):
             raise ParameterError(
                 "hydro_tower cannot combine with self_watering or "

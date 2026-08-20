@@ -42,10 +42,10 @@ on:
         description: "Water depth in mm"
         type: string
         default: "35"
-      refill_tube_bore:
-        description: "Refill tube inner diameter in mm"
-        type: string
-        default: "16"
+      jar_greenhouse:
+        description: "Jar seat in the inner pot (upside-down canning jar = greenhouse)"
+        type: boolean
+        default: false
       extra_args:
         description: "Extra CLI flags (see README)"
         type: string
@@ -67,5 +67,5 @@ jobs:
         --top-diameter ${{ inputs.top_diameter }}
         --bottom-diameter ${{ inputs.bottom_diameter }}
         --reservoir-height ${{ inputs.reservoir_height }}
-        --refill-tube-bore ${{ inputs.refill_tube_bore }}
+        ${{ inputs.jar_greenhouse && '--jar-greenhouse' || '' }}
         ${{ inputs.extra_args }}

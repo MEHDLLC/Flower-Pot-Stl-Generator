@@ -43,10 +43,11 @@ on:
         type: choice
         default: ring
         options: [ring, center, grid, none]
-      saucer:
-        description: "Also generate a matching drip saucer"
-        type: boolean
-        default: false
+      extras:
+        description: "Extras"
+        type: choice
+        default: none
+        options: [none, saucer, jar_greenhouse, saucer_and_jar]
       extra_args:
         description: "Extra CLI flags (see README)"
         type: string
@@ -67,5 +68,6 @@ jobs:
         --top-diameter ${{ inputs.top_diameter }}
         --bottom-diameter ${{ inputs.bottom_diameter }}
         --drainage-pattern ${{ inputs.drainage_pattern }}
-        ${{ inputs.saucer && '--generate-saucer' || '' }}
+        ${{ (inputs.extras == 'saucer' || inputs.extras == 'saucer_and_jar') && '--generate-saucer' || '' }}
+        ${{ (inputs.extras == 'jar_greenhouse' || inputs.extras == 'saucer_and_jar') && '--jar-greenhouse' || '' }}
         ${{ inputs.extra_args }}

@@ -37,6 +37,10 @@ on:
         type: choice
         default: creality-k1-max
         options: [creality-k1-max, creality-k1, creality-ender3-v3-ke, none]
+      jar_greenhouse:
+        description: "Also generate a jar collar ring (canning-jar greenhouse)"
+        type: boolean
+        default: false
       extra_args:
         description: "Extra CLI flags (see README)"
         type: string
@@ -57,4 +61,5 @@ jobs:
         --refill-tube-bore ${{ inputs.refill_tube_bore }}
         --color ${{ inputs.color }}
         --printer ${{ inputs.printer }}
+        ${{ inputs.jar_greenhouse && '--jar-greenhouse' || '' }}
         ${{ inputs.extra_args }}

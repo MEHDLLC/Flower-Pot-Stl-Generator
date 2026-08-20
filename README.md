@@ -243,6 +243,34 @@ python -m flowerpot --hydro-tower --name tower --ports-per-segment 4 \
     --tower-diameter 125 --segment-height 180 --color sage
 ```
 
+## Mason-jar greenhouse
+
+![jar greenhouse](docs/img/jar.png)
+
+`--jar-greenhouse` turns any pot mouth into a seat for an **upside-down canning
+jar** — a mini greenhouse over the seedling. The interior necks inward (never
+steeper than 42°, so it still prints support-free) into a shelf with a circular
+groove; the inverted jar's lip drops in, an upstand ring keeps it centred, and the
+plant grows through the shaft in the middle. Four vent notches punch through to the
+shaft so the greenhouse breathes — the tests verify that topologically, because an
+airtight cloche cooks the seedling.
+
+It works on the **classic pot**, on the **self-watering set's inner liner**, and the
+**reservoir insert** gains a standalone collar ring to set on the soil. Not
+available on the hydro tower. Size it with `jar_mouth_od`: 86 (default) fits US
+wide-mouth canning jars, 70 fits regular-mouth:
+
+```bash
+python -m flowerpot --jar-greenhouse                            # classic pot
+python -m flowerpot --self-watering --jar-greenhouse            # set, seat in liner
+python -m flowerpot --reservoir-insert --jar-greenhouse         # + collar ring
+python -m flowerpot --jar-greenhouse --jar-mouth-od 70          # regular-mouth jar
+```
+
+Each workflow form has it too: the classic form's *Extras* picker
+(`saucer_and_jar` gives you both), and checkboxes on the self-watering and insert
+forms.
+
 ## Parameters
 
 All dimensions in **millimetres**, angles in **degrees**. Defaults in brackets.
@@ -298,6 +326,8 @@ producing a broken mesh.
 
 **Saucer** — `generate_saucer`, `saucer_clearance` (4.0), `saucer_height` (20.0),
 `saucer_wall` (3.0), `saucer_base` (4.0). Written as `<name>_saucer.*`.
+
+**Jar greenhouse** — `jar_greenhouse`, `jar_mouth_od` (86.0), `jar_seat_depth` (10.0).
 
 **Self-watering** — `self_watering`, `reservoir_height` (35.0), `sw_wall_gap` (5.0),
 `refill_tube_bore` (16.0), `wick_hole_radius` (4.0), `num_wick_holes` (3).
@@ -392,6 +422,7 @@ flowerpot/
   selfwatering.py the two-piece self-watering set (reservoir, tube, wick cup)
   insert.py     the universal drop-in reservoir insert (platform + fill tube)
   hydro.py      the hydroponic tower (segments, net cups, cap)
+  jar.py        the mason-jar greenhouse seat and collar ring
   colors.py     the palette and hex parsing
   printers.py   machine profiles + the slicer project payload
   threemf.py    minimal colored-3MF writer (thumbnail + project settings)
