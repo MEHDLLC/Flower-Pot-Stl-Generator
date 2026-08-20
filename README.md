@@ -175,6 +175,39 @@ python -m flowerpot --self-watering --pot-style hexagonal --surface-texture hone
     --color sage --format both --preview
 ```
 
+## Universal reservoir insert
+
+![reservoir insert](docs/img/insert.png)
+
+Already have a pot — printed or store-bought? `--reservoir-insert` generates a
+**drop-in platform + fill tube** that makes any *watertight* pot self-watering (the
+pot's own bottom becomes the tank, so use a cachepot or plug the drainage hole).
+Exported as `<name>_insert.*` and `<name>_insert_tube.*`, both already in their print
+orientation — no supports, no flipping in the slicer:
+
+* the **platform** stands on a skirt at `reservoir_height` above the pot floor. Soil
+  sits on the deck; a slotted wick cone descends into the water and soil pressed into
+  it wicks moisture up. Drainage holes let excess top-watering escape into the tank,
+  fins stiffen the deck, notches in the skirt let the water level equalise, and a
+  slight draft lets it drop into tapered pots.
+* the **fill tube** slips through the platform's collared socket; funnel on top, tip
+  mitered at 50° so water always finds a way out even with the tube standing square
+  on the pot floor.
+
+Measure your pot's **inside width** where the deck will sit and pick the matching
+outline — the insert mirrors the pot's shape:
+
+```bash
+python -m flowerpot --reservoir-insert --insert-shape hexagonal --insert-width 132
+python -m flowerpot --reservoir-insert --insert-shape square --insert-width 110 \
+    --reservoir-height 30 --insert-tube-length 180
+```
+
+`insert_shape` (`round` | `square` | `hexagonal` | `octagon`), `insert_width`
+(measured across the flats for polygons; the print comes out with fit clearance,
+rounded corners accounted for), `insert_tube_length`, plus the shared
+`reservoir_height` and `refill_tube_bore`.
+
 ## Parameters
 
 All dimensions in **millimetres**, angles in **degrees**. Defaults in brackets.
@@ -233,6 +266,9 @@ producing a broken mesh.
 
 **Self-watering** — `self_watering`, `reservoir_height` (35.0), `sw_wall_gap` (5.0),
 `refill_tube_bore` (16.0), `wick_hole_radius` (4.0), `num_wick_holes` (3).
+
+**Reservoir insert** — `reservoir_insert`, `insert_shape` (`"round"`),
+`insert_width` (120.0), `insert_tube_length` (150.0).
 
 **Mesh quality** — `segments` (192 around the circumference; 128 is fast, 256 glassy) and
 `vertical_step` (1.5 mm between rings). The faceted style deliberately ignores
@@ -315,6 +351,7 @@ flowerpot/
   build.py      sweeping, booleans, drainage, the saucer
   analysis.py   the print-readiness audit
   selfwatering.py the two-piece self-watering set (reservoir, tube, wick cup)
+  insert.py     the universal drop-in reservoir insert (platform + fill tube)
   colors.py     the palette and hex parsing
   printers.py   machine profiles + the slicer project payload
   threemf.py    minimal colored-3MF writer (thumbnail + project settings)

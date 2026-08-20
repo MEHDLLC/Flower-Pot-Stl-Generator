@@ -152,6 +152,20 @@ class PotParams:
     num_wick_holes: int = 3          # how many rope holes
 
     # ------------------------------------------------------------------
+    # 5c. Universal reservoir insert (exports <name>_insert + _insert_tube)
+    # ------------------------------------------------------------------
+    reservoir_insert: bool = False   # standalone platform + fill tube that
+    #                                  drops into ANY watertight pot and makes
+    #                                  it self-watering.  Uses reservoir_height
+    #                                  and refill_tube_bore from above.
+    insert_shape: str = "round"      # "round" | "square" | "hexagonal" | "octagon"
+    #                                  - mirror your pot's cross-section
+    insert_width: float = 120.0      # your pot's INSIDE width where the deck
+    #                                  will sit (across the flats for polygons)
+    insert_tube_length: float = 150.0  # fill tube length; reach from the pot
+    #                                    floor to above the soil line
+
+    # ------------------------------------------------------------------
     # 6. Matching drip saucer (exported as a second STL)
     # ------------------------------------------------------------------
     generate_saucer: bool = False
@@ -313,6 +327,18 @@ class PotParams:
                 raise ParameterError("refill_tube_bore should be 8-30 mm")
             if self.generate_saucer:
                 warn.append("generate_saucer is ignored for a self-watering set")
+        if self.reservoir_insert:
+            if self.self_watering:
+                raise ParameterError(
+                    "pick one: self_watering (a full two-pot set) or "
+                    "reservoir_insert (a drop-in for an existing pot)"
+                )
+            from .insert import INSERT_SHAPES
+            if self.insert_shape not in INSERT_SHAPES:
+                raise ParameterError(
+                    f"unknown insert_shape {self.insert_shape!r}; "
+                    f"choose from {sorted(INSERT_SHAPES)}"
+                )
         return warn
 
     # -- dict / json ---------------------------------------------------
