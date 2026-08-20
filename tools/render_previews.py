@@ -35,12 +35,12 @@ def grid(cases: list[tuple[str, PotParams]], path: Path) -> None:
     print(f"-> {path}")
 
 
-def mesh_grid(cases, path: Path) -> None:
+def mesh_grid(cases, path: Path, elev: float = 22.0, azim: float = -58.0) -> None:
     """Like grid(), but for prebuilt meshes."""
     fig = plt.figure(figsize=(4 * len(cases), 4.6), dpi=110)
     for i, (label, mesh, color) in enumerate(cases):
         ax = fig.add_subplot(1, len(cases), i + 1, projection="3d")
-        render_to_axes(ax, mesh, hex_to_rgb01(color))
+        render_to_axes(ax, mesh, hex_to_rgb01(color), elev=elev, azim=azim)
         ax.set_title(label, fontsize=13, pad=-2)
         print(f"rendered {label}")
     fig.subplots_adjust(left=0.01, right=0.99, top=1.0, bottom=0.0, wspace=0.02)
@@ -164,6 +164,46 @@ def modular_figure(out: Path) -> None:
     ], out / "modular.png")
 
 
+def drainage_figure(out: Path) -> None:
+    """Underside views: this is where the drainage options actually live."""
+    cases = []
+    for pattern in ("center", "ring", "grid", "none"):
+        p = PotParams(drainage_pattern=pattern, num_drainage_holes=5, **FAST)
+        cases.append((f"drainage: {pattern}", build_pot(p), "clay"))
+    mesh_grid(cases, out / "drainage.png", elev=-38, azim=-58)
+
+
+def extras_figure(out: Path) -> None:
+    from flowerpot import build_saucer
+    with_rim = PotParams(**FAST)
+    no_rim = PotParams(add_top_rim=False, **FAST)
+    saucer_p = PotParams(generate_saucer=True, **FAST)
+    mesh_grid([
+        ("rim (default)", build_pot(with_rim), "terracotta"),
+        ("no rim", build_pot(no_rim), "terracotta"),
+        ("drip saucer", build_saucer(saucer_p), "terracotta"),
+    ], out / "extras.png")
+
+
+def colors_figure(out: Path) -> None:
+    from flowerpot.colors import PALETTE
+    p = PotParams(height=70, top_diameter=80, bottom_diameter=60,
+                  drainage_hole_radius=3.0, rim_width=4.0, rim_height=6.0,
+                  segments=80, vertical_step=3.0)
+    mesh = build_pot(p)
+    names = sorted(PALETTE)
+    fig = plt.figure(figsize=(2.1 * 6, 2.4 * 2), dpi=110)
+    for i, name in enumerate(names):
+        ax = fig.add_subplot(2, 6, i + 1, projection="3d")
+        render_to_axes(ax, mesh, hex_to_rgb01(name))
+        ax.set_title(name, fontsize=10, pad=-4)
+        print(f"rendered color {name}")
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.97, bottom=0.0,
+                        wspace=0.02, hspace=0.05)
+    fig.savefig(out / "colors.png", facecolor="white")
+    print(f"-> {out / 'colors.png'}")
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -178,6 +218,9 @@ def main(outdir: str = "docs/img") -> None:
     hydro_figure(out)
     jar_figure(out)
     modular_figure(out)
+    drainage_figure(out)
+    extras_figure(out)
+    colors_figure(out)
 
 
 if __name__ == "__main__":

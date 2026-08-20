@@ -29,13 +29,17 @@ def _require_matplotlib():
         ) from exc
 
 
-def render_to_axes(ax, mesh, rgb=(0.80, 0.42, 0.30)) -> None:
+def render_to_axes(ax, mesh, rgb=(0.80, 0.42, 0.30),
+                   elev: float = 22.0, azim: float = -58.0) -> None:
     """Draw one mesh into a prepared 3D axes (shared by CLI and docs)."""
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+    e, a = np.radians(elev), np.radians(azim)
+    eye = np.array([np.cos(e) * np.cos(a), np.cos(e) * np.sin(a), np.sin(e)])
+
     # backface culling: matplotlib has no depth buffer, so drawing the faces
     # that point away from the camera is what makes a solid look see-through
-    facing = mesh.face_normals @ EYE > -0.02
+    facing = mesh.face_normals @ eye > -0.02
     mesh = mesh.submesh([np.flatnonzero(facing)], append=True)
 
     tris = mesh.triangles
@@ -44,7 +48,7 @@ def render_to_axes(ax, mesh, rgb=(0.80, 0.42, 0.30)) -> None:
     colors = np.clip(np.asarray(rgb)[None, :] * shade[:, None], 0, 1)
 
     # painter's algorithm: draw far triangles first
-    order = np.argsort(tris.mean(axis=1) @ EYE)
+    order = np.argsort(tris.mean(axis=1) @ eye)
     ax.add_collection3d(Poly3DCollection(
         tris[order], facecolors=colors[order], edgecolors="none", shade=False))
 
@@ -55,7 +59,7 @@ def render_to_axes(ax, mesh, rgb=(0.80, 0.42, 0.30)) -> None:
     ax.set_ylim(mid[1] - span, mid[1] + span)
     ax.set_zlim(lo[2], lo[2] + 2 * span)
     ax.set_box_aspect((1, 1, 1))
-    ax.view_init(elev=22, azim=-58)
+    ax.view_init(elev=elev, azim=azim)
     ax.set_axis_off()
 
 

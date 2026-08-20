@@ -10,6 +10,13 @@ overhangs *before* it is written to disk. Runs locally or straight from a
 ![the four pot styles](docs/img/styles.png)
 ![the surface textures](docs/img/textures.png)
 
+**Gallery** — every option, pictured in its section:
+[styles](#styles) · [textures](#surface-textures) · [drainage](#parameters) ·
+[rim & saucer](#parameters) · [colors](#colors-and-formats) ·
+[self-watering set](#self-watering-set) · [reservoir insert](#universal-reservoir-insert) ·
+[hydroponic tower](#hydroponic-tower) · [jar greenhouse](#mason-jar-greenhouse) ·
+[modular garden](#modular-garden)
+
 ---
 
 ## Install
@@ -124,6 +131,8 @@ texture with heavily twisted ribs (`rib_twist_degrees` > 25) stacks their slopes
 validator warns and the audit has the final word.
 
 ## Colors and formats
+
+![the color palette](docs/img/colors.png)
 
 STL carries no color, so the generator can also write **3MF** (`--format 3mf` or
 `both`): the same audited mesh plus your color, which slicers pick up on import.
@@ -318,6 +327,8 @@ bounding box of the STL always matches what you asked for.
 
 **Drainage**
 
+![drainage patterns](docs/img/drainage.png)
+
 | Parameter | Default | Notes |
 |---|---|---|
 | `drainage_pattern` | `"ring"` | `center` \| `ring` \| `grid` \| `none` |
@@ -329,7 +340,9 @@ Holes are always clipped to the flat part of the floor and spaced so they cannot
 into a slot. Asking for holes that cannot fit raises `ParameterError` rather than
 producing a broken mesh.
 
-**Rim**
+**Rim and saucer**
+
+![rim and saucer](docs/img/extras.png)
 
 | Parameter | Default | Notes |
 |---|---|---|
