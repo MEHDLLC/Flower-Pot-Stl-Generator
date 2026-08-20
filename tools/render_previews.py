@@ -110,6 +110,60 @@ def jar_figure(out: Path) -> None:
     ], out / "jar.png")
 
 
+def modular_figure(out: Path) -> None:
+    import math
+    import trimesh
+    from flowerpot.modular import (_BOSS_OUT, _HUB_R, _HUB_WALL, _hub_height,
+                                   build_flower_center, build_flower_petal,
+                                   build_seed_tray, build_stack_hub,
+                                   build_stack_pod)
+    p = PotParams(modular_kit="seed_cubes", **FAST)
+
+    tray = build_seed_tray(p, 2)
+    cube = build_seed_tray(p, 1)
+    W1, W2 = p.cube_size + 2.4, 2 * p.cube_size + 2.4
+    c = cube.copy()
+    c.apply_translation((W2 / 2 + _BOSS_OUT + W1 / 2, p.cube_size / 2, 0))
+    seed = trimesh.util.concatenate([tray, c])
+
+    parts = [build_flower_center(p)]
+    petal = build_flower_petal(p)
+    for k in range(5):
+        q = petal.copy()
+        q.apply_transform(trimesh.transformations.rotation_matrix(
+            2 * math.pi * k / 5, [0, 0, 1]))
+        parts.append(q)
+    flower = trimesh.util.concatenate(parts)
+
+    hub = build_stack_hub(p)
+    pod = build_stack_pod(p)
+    zu = _hub_height(p) + _HUB_WALL + 0.2
+    pieces = [hub]
+    upper = hub.copy()
+    upper.apply_transform(trimesh.transformations.rotation_matrix(
+        math.radians(45), [0, 0, 1]))
+    upper.apply_translation((0, 0, zu))
+    pieces.append(upper)
+    for level, angles in ((0.0, (0, 90, 180, 270)), (zu, (45, 135))):
+        for a in angles:
+            q = pod.copy()
+            q.apply_transform(trimesh.transformations.rotation_matrix(
+                math.pi, [0, 0, 1]))
+            q.apply_translation((_HUB_R + _BOSS_OUT + p.stack_pod_diameter / 2,
+                                 0, 0))
+            q.apply_transform(trimesh.transformations.rotation_matrix(
+                math.radians(a), [0, 0, 1]))
+            q.apply_translation((0, 0, level))
+            pieces.append(q)
+    stack = trimesh.util.concatenate(pieces)
+
+    mesh_grid([
+        ("seed tray 2x2 + docked single", seed, "terracotta"),
+        ("flower: centre + 5 petals", flower, "blush"),
+        ("rotating stack, level 2 at 45\u00b0", stack, "sage"),
+    ], out / "modular.png")
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -123,6 +177,7 @@ def main(outdir: str = "docs/img") -> None:
     insert_figure(out)
     hydro_figure(out)
     jar_figure(out)
+    modular_figure(out)
 
 
 if __name__ == "__main__":

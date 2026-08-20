@@ -1,0 +1,65 @@
+# Actions -> "Generate · modular garden" -> Run workflow.
+# Three dovetail-connected kits (one shared joint standard, so pieces from
+# any kit interconnect):
+#   seed_cubes - single cube + fused 2x2 / 3x3 / 4x4 trays, 4 drainage
+#                holes per cell, rails/bosses on every edge cell
+#   flower     - round centre pot + petal pot (print 5) that assemble
+#                into a five-petal flower
+#   stack      - rotating-stack hub (round joint = any angle) + clip-on
+#                pod pot (print 4 per level)
+name: "Generate · modular garden"
+
+on:
+  workflow_dispatch:
+    inputs:
+      kit:
+        description: "Which kit"
+        type: choice
+        default: seed_cubes
+        options: [seed_cubes, flower, stack]
+      cube_size:
+        description: "Seed cube footprint in mm (seed_cubes kit)"
+        type: string
+        default: "55"
+      cube_depth:
+        description: "Seed cube depth in mm (seed_cubes kit)"
+        type: string
+        default: "60"
+      flower_diameter:
+        description: "Flower centre outside diameter in mm (flower kit)"
+        type: string
+        default: "140"
+      stack_pod_diameter:
+        description: "Pod diameter in mm (stack kit)"
+        type: string
+        default: "70"
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: terracotta
+      printer:
+        description: "Printer profile embedded in the .3mf"
+        type: choice
+        default: creality-k1-max
+        options: [creality-k1-max, creality-k1, creality-ender3-v3-ke, none]
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  kit:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Modular garden: ${{ inputs.kit }}"
+      artifact: "modular-${{ inputs.kit }}"
+      cli_args: >-
+        --modular-kit ${{ inputs.kit }}
+        --name garden
+        --cube-size ${{ inputs.cube_size }}
+        --cube-depth ${{ inputs.cube_depth }}
+        --flower-diameter ${{ inputs.flower_diameter }}
+        --stack-pod-diameter ${{ inputs.stack_pod_diameter }}
+        --color ${{ inputs.color }}
+        --printer ${{ inputs.printer }}
+        ${{ inputs.extra_args }}

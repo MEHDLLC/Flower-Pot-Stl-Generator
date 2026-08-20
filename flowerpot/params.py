@@ -190,6 +190,17 @@ class PotParams:
     drip_hole_diameter: float = 22.0 # hole in the cap for the drip line
 
     # ------------------------------------------------------------------
+    # 5e. Modular garden kits (dovetail-connected sets)
+    # ------------------------------------------------------------------
+    modular_kit: str = "none"        # "seed_cubes" | "flower" | "stack".
+    #                                  All three share one dovetail standard,
+    #                                  so pieces from any kit interconnect.
+    cube_size: float = 55.0          # seed cube footprint (one cell)
+    cube_depth: float = 60.0         # seed cube depth
+    flower_diameter: float = 140.0   # flower centre pot outside diameter
+    stack_pod_diameter: float = 70.0 # clip-on pod diameter for the stack
+
+    # ------------------------------------------------------------------
     # 6. Matching drip saucer (exported as a second STL)
     # ------------------------------------------------------------------
     generate_saucer: bool = False
@@ -351,6 +362,18 @@ class PotParams:
                 raise ParameterError("refill_tube_bore should be 8-30 mm")
             if self.generate_saucer:
                 warn.append("generate_saucer is ignored for a self-watering set")
+        if self.modular_kit != "none":
+            from .modular import KITS
+            if self.modular_kit not in KITS:
+                raise ParameterError(
+                    f"unknown modular_kit {self.modular_kit!r}; "
+                    f"choose from {list(KITS)}"
+                )
+            if self.self_watering or self.reservoir_insert or self.hydro_tower \
+                    or self.jar_greenhouse:
+                raise ParameterError(
+                    "modular_kit cannot combine with the other product flags"
+                )
         if self.jar_greenhouse and self.hydro_tower:
             raise ParameterError(
                 "jar_greenhouse is not available on the hydro tower - use it "
