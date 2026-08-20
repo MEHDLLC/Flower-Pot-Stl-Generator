@@ -94,6 +94,22 @@ def hydro_figure(out: Path) -> None:
     ], out / "hydro.png")
 
 
+def jar_figure(out: Path) -> None:
+    import trimesh
+    from flowerpot.jar import build_jar_ring
+    p = PotParams(jar_greenhouse=True, **FAST)
+    pot = build_pot(p)
+    half = trimesh.intersections.slice_mesh_plane(
+        pot, plane_normal=[0, -1, 0], plane_origin=[0, 0, 0], cap=True)
+    ring = build_jar_ring(PotParams(jar_greenhouse=True,
+                                    reservoir_insert=True, **FAST))
+    mesh_grid([
+        ("classic pot + jar seat", pot, "terracotta"),
+        ("cut open: neck, groove, shaft", half, "sand"),
+        ("jar collar (for the insert)", ring, "charcoal"),
+    ], out / "jar.png")
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -106,6 +122,7 @@ def main(outdir: str = "docs/img") -> None:
     selfwatering_figure(out)
     insert_figure(out)
     hydro_figure(out)
+    jar_figure(out)
 
 
 if __name__ == "__main__":

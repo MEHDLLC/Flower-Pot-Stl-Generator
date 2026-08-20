@@ -146,8 +146,14 @@ def build_profiles(p: PotParams) -> Profiles:
     else:
         inner.append((r_floor_wall, floor_z))
 
-    inner.append((cavity_radius(p.height), p.height))
-    inner.append((cavity_radius(p.height), p.height + _TOP_OVERSHOOT))
+    if p.jar_greenhouse:
+        from .jar import check_jar_fit, neck_rings
+        check_jar_fit(p, cavity_radius(p.height))
+        tail = neck_rings(p, cavity_radius, p.height, _TOP_OVERSHOOT)
+        inner = [ring for ring in inner if ring[1] < tail[0][1] - 1e-6] + tail
+    else:
+        inner.append((cavity_radius(p.height), p.height))
+        inner.append((cavity_radius(p.height), p.height + _TOP_OVERSHOOT))
 
     # keep both polylines strictly increasing in z (they are functions of z)
     for name, poly in (("outer", outer), ("inner", inner)):

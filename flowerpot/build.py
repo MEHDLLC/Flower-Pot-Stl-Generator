@@ -198,6 +198,9 @@ def build_pot(p: PotParams) -> trimesh.Trimesh:
 
     pot = _boolean("difference", [body, cavity])
     cutters = drainage_cutters(p, prof)
+    if p.jar_greenhouse:
+        from .jar import seat_cutters
+        cutters = cutters + seat_cutters(p, p.height)
     if cutters:
         pot = _boolean("difference", [pot] + cutters)
 
@@ -239,6 +242,7 @@ def build_saucer(p: PotParams) -> trimesh.Trimesh:
         inner_base_chamfer=min(2.0, p.saucer_wall),
         drainage_pattern="none",
         surface_texture="none",
+        jar_greenhouse=False,
         facet_bands=max(1, p.facet_bands // 3),
         rib_twist_degrees=p.rib_twist_degrees * p.saucer_height / max(p.height, 1e-9),
     )

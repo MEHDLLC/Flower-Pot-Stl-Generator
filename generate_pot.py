@@ -94,6 +94,10 @@ PARAMS = dict(
     generate_saucer=False,    # True also writes <name>_saucer.stl
     saucer_clearance=4.0,     # gap around the pot foot
 
+    # -- mason-jar greenhouse seat (classic pot / SW inner / insert collar) --
+    jar_greenhouse=False,     # seat an upside-down canning jar over the plant
+    jar_mouth_od=86.0,        # ~86 wide-mouth, ~70 regular-mouth jars
+
     # -- self-watering set (writes <name>_outer.* and <name>_inner.*) --------
     self_watering=False,      # outer reservoir pot with refill tube + funnel,
     #                           inner liner standing on a wick cup, rims flush

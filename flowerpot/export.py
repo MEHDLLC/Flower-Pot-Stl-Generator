@@ -77,6 +77,9 @@ def export_pot(
             (build_insert_platform, f"{name}_insert", False),
             (build_insert_tube, f"{name}_insert_tube", False),
         ]
+        if params.jar_greenhouse:
+            from .jar import build_jar_ring
+            jobs.append((build_jar_ring, f"{name}_jar_ring", False))
     elif params.self_watering:
         from .selfwatering import build_self_watering_inner, build_self_watering_outer
         jobs = [

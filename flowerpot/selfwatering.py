@@ -53,7 +53,8 @@ _RIM_CLEAR = 0.5          # radial reveal between inner rim and outer mouth
 def _outer_params(p: PotParams) -> PotParams:
     """The outer pot: user's style, but watertight and straight-bellied
     (the tube must hug a straight wall line)."""
-    return p.with_(drainage_pattern="none", belly=0.0, generate_saucer=False)
+    return p.with_(drainage_pattern="none", belly=0.0, generate_saucer=False,
+                   jar_greenhouse=False)
 
 
 def _poly_min_factor(p: PotParams) -> float:
@@ -229,7 +230,13 @@ def build_self_watering_inner(p: PotParams) -> trimesh.Trimesh:
     inner_rings = [(cavity_radius(z), z) for z in
                    _monotonic([p.base_thickness, _CUP_WALL_H + wt * 1.4,
                                zj + wt * 1.4, z_chamfer, hi])]
-    inner_rings.append((inner_rings[-1][0], hi + 4.0))
+    if p.jar_greenhouse:
+        from .jar import check_jar_fit, neck_rings
+        check_jar_fit(p, cavity_radius(hi))
+        tail = neck_rings(p, cavity_radius, hi, 4.0)
+        inner_rings = [r for r in inner_rings if r[1] < tail[0][1] - 1e-6] + tail
+    else:
+        inner_rings.append((inner_rings[-1][0], hi + 4.0))
 
     ip = p.with_(pot_style="classic_tapered", surface_texture="none")
     section = make_section(ip)
@@ -257,6 +264,10 @@ def build_self_watering_inner(p: PotParams) -> trimesh.Trimesh:
         rot = trimesh.transformations.rotation_matrix(a, [0, 0, 1])
         notch.apply_transform(rot)
         cutters.append(notch)
+
+    if p.jar_greenhouse:
+        from .jar import seat_cutters
+        cutters += seat_cutters(p, hi)
 
     return _finish(_boolean("difference", [pot] + cutters))
 
