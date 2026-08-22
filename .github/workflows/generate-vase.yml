@@ -33,10 +33,10 @@ on:
         type: string
         default: "110"
       stem:
-        description: "Hollow leafy stem (screw = separate screw-in piece, unscrews for cleaning)"
+        description: "Hollow leafy stem (screw = separate screw-in piece; loose_leaves = push-in leaf plate for a 2nd color)"
         type: choice
         default: none
-        options: [none, printed, screw]
+        options: [none, printed, screw, printed_loose_leaves, screw_loose_leaves]
       stem_length:
         description: "Stem rise above the rim in mm (with stem)"
         type: string
@@ -70,7 +70,8 @@ jobs:
         --top-diameter ${{ inputs.top_diameter }}
         --drainage-pattern none
         --no-add-top-rim
-        ${{ inputs.stem != 'none' && format('--stem --stem-mount {0}', inputs.stem) || '' }}
+        ${{ inputs.stem != 'none' && format('--stem --stem-mount {0}', contains(inputs.stem, 'screw') && 'screw' || 'printed') || '' }}
+        ${{ contains(inputs.stem, 'loose_leaves') && '--leaf-mount insert' || '' }}
         --stem-length ${{ inputs.stem_length }}
         --color ${{ inputs.color }}
         --printer ${{ inputs.printer }}

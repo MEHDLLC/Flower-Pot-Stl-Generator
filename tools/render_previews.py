@@ -279,6 +279,40 @@ def planted_figure(out: Path) -> None:
               out / "planted.png")
 
 
+def leaves_figure(out: Path) -> None:
+    import math
+    import trimesh
+    from flowerpot.profile import build_profiles
+    from flowerpot.stem import (_centerline, _leaf_sites, _main_leaf_piece,
+                                _taper, build_leaf_inserts, build_stem_piece,
+                                leaf_pose, _SOCKET_H, _STEM_R_BASE,
+                                _STEM_R_TIP, _STUB_H, _THREAD_CLEAR)
+    p = PotParams(vase_profile="classic", stem=True, stem_mount="screw",
+                  leaf_mount="insert", leaf_angle=40.0, stem_length=110.0,
+                  drainage_pattern="none", add_top_rim=False, **FAST)
+    prof = build_profiles(p)
+    piece = build_stem_piece(p, prof.floor_top_z)
+    plate = build_leaf_inserts(p)
+
+    z_seat = (_STUB_H - 1.0) + _THREAD_CLEAR * 1.15
+    z_rim = z_seat + (p.height - (prof.floor_top_z + _SOCKET_H))
+    top = z_rim + p.stem_length
+    z_f2 = (_STUB_H - 1.0) + (15.0 - 10.0) * 1.15 + 1.5
+    r_fn = _taper(_STEM_R_BASE, z_f2, _STEM_R_TIP, top)
+    cl = _centerline(p, z_rim, top)
+    posed = [piece]
+    for z_att, length, azim, tilt in _leaf_sites(p, z_rim, top):
+        leaf = _main_leaf_piece(p, z_att, length, azim, tilt, r_fn, cl)
+        cx, cy = cl(z_att)
+        leaf.apply_transform(leaf_pose(r_fn(z_att), azim, cx, cy, z_att))
+        posed.append(leaf)
+
+    mesh_grid([("stem with leaf slots", piece, "clay"),
+               ("push-in leaf plate", plate, "sage"),
+               ("leaves clicked in", trimesh.util.concatenate(posed), "sage")],
+              out / "leaves.png")
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -299,6 +333,7 @@ def main(outdir: str = "docs/img") -> None:
     nursery_figure(out)
     vase_figure(out)
     planted_figure(out)
+    leaves_figure(out)
 
 
 if __name__ == "__main__":

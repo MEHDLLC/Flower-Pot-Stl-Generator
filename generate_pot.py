@@ -64,7 +64,11 @@ PARAMS = dict(
     branch_length=70.0,       # branch climb; auto-shortened to fit the stem
     num_leaves=5,
     leaf_length=55.0,
-    leaf_angle=25.0,
+    leaf_angle=25.0,          # fused leaves cap at 30; insert leaves at 60
+    leaf_mount="printed",     # "insert" cuts slots in the stem and writes a
+    #                           flat <name>_leaves plate - print it in a 2nd
+    #                           color/filament and push each tab into a slot
+    #                           (flip a leaf in its slot to make it droop)
     soil_cap=False,           # removable raked-"soil" lid seated below the
     #                           rim, centre hole for the stem plus two finger
     #                           holes - the potted-plant look, written as

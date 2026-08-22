@@ -242,6 +242,20 @@ raked soil (every bump faces up, so it prints flat with zero supports), with a
 centre hole the stem passes through and two finger holes that double as watering
 holes. Lift it out by the finger holes to water or to unscrew the stem.
 
+![insert leaves](docs/img/leaves.png)
+
+**`--leaf-mount insert`** makes the leaves separate push-in pieces, so a
+single-color printer can print the vase, the stem and the leaves in three
+different colors or filaments. The stem gets vertical gable-roofed slots
+(support-free in the standing print) and the whole foliage is written as
+`<name>_leaves.*` — a flat plate of leaves, biggest first, each with a tab that
+slides into any slot of its size (big tabs = main stem, small tabs = branches).
+Each blade carries a saddle matching the stem's curve so it seats flush. Two
+bonuses: the leafless stem is an even easier print, and because insert leaves
+print flat, `leaf_angle` may go up to **60°** — drooping foliage the fused
+version can't do. Flip a leaf in its slot and it droops the other way. The fit
+is a light friction fit; a dot of glue makes it permanent.
+
 ```bash
 python -m flowerpot --vase-profile classic --height 220 --top-diameter 110 \
     --drainage-pattern none --no-add-top-rim
@@ -465,8 +479,9 @@ producing a broken mesh.
 (`"printed"` fused | `"screw"` separate threaded piece), `stem_length` (130.0),
 `stem_bore` (9.0), `stem_curve` (6.0 mm of sway, 0 = straight), `num_branches` (2),
 `branch_length` (70.0), `num_leaves` (5), `leaf_length` (55.0), `leaf_angle`
-(25.0, max 30), `soil_cap` (removable raked-soil lid, written as
-`<name>_soil_cap.*`).
+(25.0; max 30 fused, max 60 with insert leaves), `leaf_mount` (`"printed"` fused |
+`"insert"` push-in leaf plate written as `<name>_leaves.*`), `soil_cap` (removable
+raked-soil lid, written as `<name>_soil_cap.*`).
 
 **Self-watering** — `self_watering`, `reservoir_height` (35.0), `sw_wall_gap` (5.0),
 `refill_tube_bore` (16.0), `wick_hole_radius` (4.0), `num_wick_holes` (3).
