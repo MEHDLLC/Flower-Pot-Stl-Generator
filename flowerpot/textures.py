@@ -26,7 +26,7 @@ import math
 import numpy as np
 
 from .params import PotParams
-from .profile import Profiles, wall_radius
+from .profile import Profiles, wall_radius, wall_slope
 
 #: texture names -> Texture method (validated against params.TEXTURES)
 _ROW = math.sqrt(3.0) / 2.0
@@ -63,7 +63,16 @@ class Texture:
     def _window(self, z: float) -> float:
         a = float(_smoothstep(np.float64((z - self.z_lo) / self.fade)))
         b = float(_smoothstep(np.float64((self.z_hi - z) / self.fade)))
-        return min(a, b)
+        # melt the texture away where the wall itself is steep (vase bellies,
+        # bottle shoulders): the groove gradient would stack on the wall's
+        # slope and blow the overhang budget.  Full depth below 0.35 wall
+        # slope, gone by 0.5 - judged over a +-6 mm window so the amplitude
+        # ramps back gradually after a steep stretch instead of snapping to
+        # full at a curve breakpoint (the snap itself is a cliff).
+        slope = max(abs(wall_slope(self.p, z + dz))
+                    for dz in (-6.0, -3.0, 0.0, 3.0, 6.0))
+        calm = float(np.clip((0.5 - slope) / 0.15, 0.0, 1.0))
+        return min(a, b) * calm
 
     def __call__(self, theta: np.ndarray, z: float) -> np.ndarray:
         amp = self.depth * self._window(z)

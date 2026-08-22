@@ -31,6 +31,10 @@ STYLES: dict[str, str] = {
 #: Drainage layouts understood by the generator.
 DRAINAGE_PATTERNS = ("center", "ring", "grid", "none")
 
+#: Vase silhouettes: named wall curves that replace the straight taper.
+#: Implementations live in :mod:`flowerpot.profile`.
+VASE_PROFILES = ("none", "classic", "bud", "gourd", "bottle", "cone", "wave")
+
 #: Relief textures that can be pressed into the outside of the wall.  They
 #: are independent of ``pot_style`` (except low_poly_faceted, whose sparse
 #: mesh cannot carry one).  Implementations live in :mod:`flowerpot.textures`.
@@ -65,6 +69,19 @@ class PotParams:
     base_thickness: float = 5.0      # solid floor thickness under the soil.
     #                                  Must exceed wall_thickness so drainage holes
     #                                  do not undercut the wall.
+
+    # ------------------------------------------------------------------
+    # 1a. Vase silhouette
+    # ------------------------------------------------------------------
+    vase_profile: str = "none"       # replace the straight taper with a curvy
+    #                                  vase wall: "classic" (amphora), "bud",
+    #                                  "gourd", "bottle", "cone", "wave".
+    #                                  Sized by height and top_diameter (the
+    #                                  mouth); bottom_diameter and belly are
+    #                                  ignored.  Composes with every style and
+    #                                  texture.  Curves too steep for the
+    #                                  overhang budget at your height are
+    #                                  rejected with the height they need.
 
     # ------------------------------------------------------------------
     # 1b. Uniform scale
@@ -154,6 +171,21 @@ class PotParams:
     #                                    floor.  Adds strength and removes a stress riser.
     base_flat: bool = True             # keep the footprint perfectly flat for bed adhesion.
     #                                    Setting False lets the style texture wrap the base.
+
+    # ------------------------------------------------------------------
+    # 4d. Sculptural stem (the "planted flower" vase)
+    # ------------------------------------------------------------------
+    stem: bool = False               # a hollow stem rises from the pot floor
+    #                                  through the mouth, with leaves spiralling
+    #                                  off it - drop a real flower into the
+    #                                  bore and the vase reads as its extension
+    stem_length: float = 130.0       # how far the stem rises above the rim
+    stem_bore: float = 9.0           # inner diameter; holds a real stem, and
+    #                                  water too if the vessel is watertight
+    num_leaves: int = 5              # leaves spiralling up the exposed stem
+    leaf_length: float = 55.0
+    leaf_angle: float = 25.0         # tilt from the stem axis.  Hard-capped at
+    #                                  30 so the leaves print support-free.
 
     # ------------------------------------------------------------------
     # 5a. Mason-jar greenhouse seat (classic pot, self-watering inner,
@@ -281,6 +313,28 @@ class PotParams:
                 f"unknown drainage_pattern {self.drainage_pattern!r}; "
                 f"choose from {list(DRAINAGE_PATTERNS)}"
             )
+        if self.vase_profile not in VASE_PROFILES:
+            raise ParameterError(
+                f"unknown vase_profile {self.vase_profile!r}; "
+                f"choose from {list(VASE_PROFILES)}"
+            )
+        if self.stem:
+            if not 10.0 <= self.leaf_angle <= 30.0:
+                raise ParameterError(
+                    "leaf_angle must be 10-30 degrees: past 30 the leaf "
+                    "undersides need supports"
+                )
+            if not 5.0 <= self.stem_bore <= 20.0:
+                raise ParameterError("stem_bore should be 5-20 mm")
+            if self.jar_greenhouse:
+                raise ParameterError(
+                    "stem and jar_greenhouse both occupy the mouth - pick one"
+                )
+            if self.drainage_pattern == "center":
+                raise ParameterError(
+                    "the stem stands where the center drainage hole goes - "
+                    "use ring, grid or none"
+                )
         if self.surface_texture not in TEXTURES:
             raise ParameterError(
                 f"unknown surface_texture {self.surface_texture!r}; "

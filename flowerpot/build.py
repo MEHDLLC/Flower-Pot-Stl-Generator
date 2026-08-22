@@ -253,7 +253,14 @@ def build_pot(p: PotParams) -> trimesh.Trimesh:
     if cutters:
         pot = _boolean("difference", [pot] + cutters)
 
-    return _finish(pot)
+    if p.stem:
+        from .stem import stem_parts
+        solids, stem_cutters = stem_parts(p, prof.floor_top_z)
+        pot = _boolean("union", [pot] + solids)
+        pot = _boolean("difference", [pot] + stem_cutters)
+
+    # the stem grows past the mouth: don't recentre around it
+    return _finish(pot, center=not p.stem)
 
 
 def build_saucer(p: PotParams) -> trimesh.Trimesh:

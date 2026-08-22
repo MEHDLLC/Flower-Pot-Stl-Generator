@@ -75,6 +75,7 @@ pick the product — each has its own *Run workflow* form:
 | **Generate · hydroponic tower** | stackable column segments with angled plant ports + net cups |
 | **Generate · modular garden** | dovetail-connected seed trays, the flower set, the rotating stack |
 | **Generate · simple pot** | thin-walled nursery pots: shape, scale, wall, side + bottom drainage |
+| **Generate · vase** | six curvy silhouettes × any style × any texture, plus the planted stem |
 
 Anything not on a form goes in *extra_args* exactly as you would type it on the CLI.
 Every run uploads an artifact with the `.stl`, the colored `.3mf` and a `.png`
@@ -195,6 +196,33 @@ python -m flowerpot --pot-style square --wall-thickness 1.6 --num-side-holes 6
 
 # the same pot at 60% size, walls unchanged
 python -m flowerpot --scale 0.6 --wall-thickness 1.4 --base-thickness 2
+```
+
+## Vases and the planted stem
+
+![vases](docs/img/vases.png)
+
+`--vase-profile` swaps the straight taper for a curvy silhouette: **classic**
+(amphora), **bud**, **gourd**, **bottle**, **cone**, **wave**. `top_diameter` sizes
+the vase's *widest* point and the mouth follows the shape; a curve too steep for
+your height is rejected with the height that would fix it — both the outside and
+the inside of every bend stay inside the overhang budget. Because the curve plugs
+in at the wall level, everything composes: a honeycomb bottle, a hexagonal wave
+vase, a low-poly gourd. Textures automatically melt away over a curve's steep
+stretches (belly climbs, bottle shoulders) so they never stack past 45°.
+
+**`--stem`** grows the fun one: a hollow tapered stem rises from the vessel's floor
+to `stem_length` above the rim, with `num_leaves` lens-shaped leaves spiralling up
+at the golden angle. The leaves tilt `leaf_angle` (hard-capped at 30°) off the stem
+so everything prints support-free. Drop a real flower or two into the `stem_bore` —
+in a watertight vase the bore holds water — and the vase reads as the flower's own
+stem. Works on any vase profile or plain pot (bonsai-pot look).
+
+```bash
+python -m flowerpot --vase-profile classic --height 220 --top-diameter 110 \
+    --drainage-pattern none --no-add-top-rim
+python -m flowerpot --vase-profile bud --stem --height 180 --top-diameter 120 \
+    --drainage-pattern none --no-add-top-rim --color sage
 ```
 
 ## Self-watering set
@@ -407,6 +435,9 @@ producing a broken mesh.
 
 **Jar greenhouse** — `jar_greenhouse`, `jar_mouth_od` (86.0), `jar_seat_depth` (10.0).
 
+**Vase** — `vase_profile` (`"none"`). **Stem** — `stem`, `stem_length` (130.0),
+`stem_bore` (9.0), `num_leaves` (5), `leaf_length` (55.0), `leaf_angle` (25.0, max 30).
+
 **Self-watering** — `self_watering`, `reservoir_height` (35.0), `sw_wall_gap` (5.0),
 `refill_tube_bore` (16.0), `wick_hole_radius` (4.0), `num_wick_holes` (3).
 
@@ -504,6 +535,7 @@ flowerpot/
   insert.py     the universal drop-in reservoir insert (platform + fill tube)
   hydro.py      the hydroponic tower (segments, net cups, cap)
   jar.py        the mason-jar greenhouse seat and collar ring
+  stem.py       the planted-flower stem and its lens leaves
   modular.py    the dovetail standard + seed cubes, flower set, rotating stack
   colors.py     the palette and hex parsing
   printers.py   machine profiles + the slicer project payload
