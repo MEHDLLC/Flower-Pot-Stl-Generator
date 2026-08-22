@@ -32,7 +32,7 @@ import math
 import numpy as np
 import trimesh
 
-from .build import _boolean, _finish, lathe
+from .build import _boolean, _diamond_port, _finish, _prism, lathe  # noqa: F401 (re-exported)
 from .params import ParameterError, PotParams
 from .profile import build_profiles, resample, wall_radius, wall_slope
 from .sections import make_section
@@ -70,34 +70,6 @@ def _outer_cavity_min(p: PotParams, z: float) -> float:
     corner_cavity = (wall_radius(op, z)
                      - op.wall_thickness * math.hypot(1.0, slope) * section_factor)
     return corner_cavity * _poly_min_factor(op)
-
-
-def _prism(profile_yz: list[tuple[float, float]], x0: float, x1: float) -> trimesh.Trimesh:
-    """Convex prism along X from a (y, z) profile - used for the diamond
-    ports whose roofs must slope instead of bridging."""
-    n = len(profile_yz)
-    verts = ([(x0, y, z) for y, z in profile_yz]
-             + [(x1, y, z) for y, z in profile_yz])
-    faces = []
-    for i in range(1, n - 1):                       # end caps (convex fans)
-        faces.append([0, i + 1, i])
-        faces.append([n, n + i, n + i + 1])
-    for i in range(n):                              # side quads
-        j = (i + 1) % n
-        faces.append([i, j, n + j])
-        faces.append([i, n + j, n + i])
-    mesh = trimesh.Trimesh(vertices=verts, faces=faces, process=True)
-    if mesh.volume < 0:
-        mesh.invert()
-    return mesh
-
-
-def _diamond_port(x0: float, x1: float, z_center: float,
-                  half_w: float, up: float, down: float) -> trimesh.Trimesh:
-    """Elongated diamond prism along X: roof slope = atan(half_w / up)."""
-    profile = [(0.0, z_center - down), (half_w, z_center),
-               (0.0, z_center + up), (-half_w, z_center)]
-    return _prism(profile, x0, x1)
 
 
 # ---------------------------------------------------------------------------

@@ -46,11 +46,18 @@ PARAMS = dict(
     wall_thickness=3.0,       # 2.4-3.2 mm is the sweet spot for a 0.4 mm nozzle
     base_thickness=5.0,       # floor under the soil; keep it above wall_thickness
 
+    # -- uniform scale --------------------------------------------------------
+    scale=1.0,                # resize the pot's proportions; wall_thickness and
+    #                           base_thickness stay exactly as set below
+
     # -- drainage -----------------------------------------------------------
     drainage_pattern="ring",  # "center" | "ring" | "grid" | "none"
     drainage_hole_radius=6.0, # radius, not diameter
     num_drainage_holes=5,     # used by "ring" and "grid"
     drainage_ring_fraction=0.55,   # 0.3 = huddled in the middle, 0.8 = near the wall
+    num_side_holes=0,         # grow-pot side ports through the wall above the
+    #                           floor; combine freely with the bottom patterns
+    side_hole_radius=4.0,
 
     # -- rim ----------------------------------------------------------------
     add_top_rim=True,

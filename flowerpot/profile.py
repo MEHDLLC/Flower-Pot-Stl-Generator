@@ -148,7 +148,9 @@ def build_profiles(p: PotParams) -> Profiles:
 
     if p.jar_greenhouse:
         from .jar import check_jar_fit, neck_rings
-        check_jar_fit(p, cavity_radius(p.height))
+        # polygonal pots: the round jar seat must fit inside the FLATS
+        fmin = math.cos(math.pi / p.sides) if p.sides > 1 else 1.0
+        check_jar_fit(p, cavity_radius(p.height) * fmin)
         tail = neck_rings(p, cavity_radius, p.height, _TOP_OVERSHOOT)
         inner = [ring for ring in inner if ring[1] < tail[0][1] - 1e-6] + tail
     else:
