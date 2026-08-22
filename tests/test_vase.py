@@ -45,17 +45,21 @@ def test_stem_vase_prints_support_free():
     # stem rises stem_length above the rim; bore is open at the top
     assert vase.extents[2] == pytest.approx(180.0 + p.stem_length, abs=0.5)
     top = vase.vertices[vase.vertices[:, 2] > vase.extents[2] - 1.0]
-    r_top = np.hypot(top[:, 0], top[:, 1])
+    rel = top[:, :2] - top[:, :2].mean(axis=0)        # the tip sways off-axis
+    r_top = np.hypot(rel[:, 0], rel[:, 1])
     assert r_top.min() < p.stem_bore / 2.0 + 0.5      # bore mouth is open
-    # blind bore: every handle is a water hole through the stem wall
-    assert round((2 - vase.euler_number) / 2) == _expected_water_holes(p)
+    # blind bore: every handle is a water hole through the stem wall, or a
+    # branch bore joining the main water column
+    assert round((2 - vase.euler_number) / 2) == _expected_stem_tunnels(p)
 
 
-def _expected_water_holes(p: PotParams) -> int:
+def _expected_stem_tunnels(p: PotParams) -> int:
     from flowerpot.profile import build_profiles
-    from flowerpot.stem import _water_holes
+    from flowerpot.stem import _water_holes, planned_branches
     floor_z = build_profiles(p).floor_top_z
-    return len(_water_holes(p, floor_z + 14.0, p.height - 10.0))
+    top = p.height + p.stem_length
+    return (len(_water_holes(p, floor_z + 14.0, p.height - 10.0))
+            + len(planned_branches(p, p.height, top)))
 
 
 def test_stem_works_in_a_plain_pot_too():
@@ -63,8 +67,8 @@ def test_stem_works_in_a_plain_pot_too():
                   segments=72, vertical_step=3.0)
     pot = build_pot(p)
     assert audit(pot, p.overhang_limit_deg).ok
-    # 5 drainage holes (all outside the stem's keep-out) + the water holes
-    assert round((2 - pot.euler_number) / 2) == 5 + _expected_water_holes(p)
+    # 5 drainage holes (all outside the stem's keep-out) + the stem tunnels
+    assert round((2 - pot.euler_number) / 2) == 5 + _expected_stem_tunnels(p)
 
 
 def test_stem_guardrails():

@@ -58,6 +58,10 @@ PARAMS = dict(
     #                           to clean, or print a taller stem than the pot
     stem_length=130.0,
     stem_bore=9.0,
+    stem_curve=6.0,           # mm of gentle sway above the rim; 0 = straight
+    num_branches=2,           # side stems curving off the main one, each with
+    #                           its own open tip joined to the water column
+    branch_length=70.0,       # branch climb; auto-shortened to fit the stem
     num_leaves=5,
     leaf_length=55.0,
     leaf_angle=25.0,

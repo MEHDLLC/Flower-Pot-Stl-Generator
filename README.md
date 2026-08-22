@@ -220,6 +220,13 @@ stem. **Water holes** (diamond ports, support-free) spiral up the submerged part
 the stem, so the vessel's water reaches the real stem inside the bore. Works on any
 vase profile or plain pot (bonsai-pot look).
 
+The stem isn't a bare pole: `stem_curve` sways it into a gentle lean above the rim
+(dead straight below, where the socket and water holes live), and `num_branches`
+side stems fork off it — leaving at ~35° so they print support-free, easing upright
+as they climb, each ending in its **own open bore joined to the main water column**.
+One flower per branch. Branches that wouldn't fit under the stem tip shorten or
+skip themselves automatically.
+
 ![planted pot](docs/img/planted.png)
 
 **`--stem-mount screw`** splits the stem into its own piece: the vessel grows a
@@ -456,8 +463,10 @@ producing a broken mesh.
 
 **Vase** — `vase_profile` (`"none"`). **Stem** — `stem`, `stem_mount`
 (`"printed"` fused | `"screw"` separate threaded piece), `stem_length` (130.0),
-`stem_bore` (9.0), `num_leaves` (5), `leaf_length` (55.0), `leaf_angle` (25.0, max 30),
-`soil_cap` (removable raked-soil lid, written as `<name>_soil_cap.*`).
+`stem_bore` (9.0), `stem_curve` (6.0 mm of sway, 0 = straight), `num_branches` (2),
+`branch_length` (70.0), `num_leaves` (5), `leaf_length` (55.0), `leaf_angle`
+(25.0, max 30), `soil_cap` (removable raked-soil lid, written as
+`<name>_soil_cap.*`).
 
 **Self-watering** — `self_watering`, `reservoir_height` (35.0), `sw_wall_gap` (5.0),
 `refill_tube_bore` (16.0), `wick_hole_radius` (4.0), `num_wick_holes` (3).

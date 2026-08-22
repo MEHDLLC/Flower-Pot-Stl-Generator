@@ -23,6 +23,13 @@ stem passes through and two finger holes that double as watering holes.
 Leaves are **lenses** - intersections of two shallow ellipsoids - the one
 leaf shape that prints support-free; they spiral up at the golden angle,
 tilted at most ``leaf_angle`` (hard cap 30 degrees) off the stem.
+
+Above the rim the stem is a *sheared* ring stack rather than a lathe:
+``stem_curve`` sways the centreline into a gentle lean (dead straight
+below the rim, where the socket, the water holes and the soil cap live),
+and ``num_branches`` side stems fork off it - leaving at ~35 degrees off
+vertical, easing upright, each ending in an open bore that connects to
+the main water column so every branch holds its own flower.
 """
 
 from __future__ import annotations
@@ -52,6 +59,8 @@ _SOCKET_H = 13.0
 
 _STEM_R_BASE = 8.0
 _STEM_R_TIP = 6.0
+_BRANCH_TIP_R = 4.5
+_BRANCH_BORE_R = 2.8
 
 
 class _ThreadSection(Section):
@@ -90,6 +99,129 @@ def _thread_mesh(p: PotParams, r_core: float, z0: float, z1: float,
                  sec, decorate=False)
 
 
+def _tube(path, radii, nt: int = 48) -> trimesh.Trimesh:
+    """Watertight tube: horizontal circular rings stacked along ``path``
+    (strictly rising z), capped with centre fans at both ends.  A ring
+    stack with drifting centres is a *sheared* cylinder, so the underside
+    lean is simply the centreline's lateral slope (plus any taper) - keep
+    that under 45 degrees and the tube prints support-free."""
+    verts, faces = [], []
+    n = len(path)
+    for (x, y, z), r in zip(path, radii):
+        for j in range(nt):
+            a = 2.0 * math.pi * j / nt
+            verts.append((x + r * math.cos(a), y + r * math.sin(a), z))
+    cb = len(verts)
+    verts.append(tuple(path[0]))
+    ct = len(verts)
+    verts.append(tuple(path[-1]))
+
+    def ring(i, j):
+        return i * nt + (j % nt)
+
+    for j in range(nt):
+        faces.append([cb, ring(0, j + 1), ring(0, j)])        # bottom, -z
+        faces.append([ct, ring(n - 1, j), ring(n - 1, j + 1)])  # top, +z
+    for i in range(n - 1):
+        for j in range(nt):
+            a, b = ring(i, j), ring(i, j + 1)
+            c, d = ring(i + 1, j + 1), ring(i + 1, j)
+            faces.append([a, b, c])
+            faces.append([a, c, d])
+    return trimesh.Trimesh(vertices=verts, faces=faces, process=True)
+
+
+def _centerline(p: PotParams, z_rim: float, top: float):
+    """(cx, cy) sway of the stem axis at height z.  Dead straight below
+    the rim - the socket, the water holes and the soil cap's hole all live
+    down there - then a gentle cosine lean with a sine cross-sway above.
+    Validation caps the slope at ~15 degrees (stem_length >= 6 x curve)."""
+    amp = p.stem_curve
+    length = max(top - z_rim, 1.0)
+
+    def at(z: float) -> tuple[float, float]:
+        if amp <= 0.0 or z <= z_rim:
+            return 0.0, 0.0
+        u = min(1.0, (z - z_rim) / length)
+        return (amp * 0.5 * (1.0 - math.cos(math.pi * u)),
+                0.35 * amp * math.sin(math.pi * u))
+    return at
+
+
+def _shaft_tube(p: PotParams, z0: float, z1: float, r_fn, cl,
+                step: float = 2.5) -> trimesh.Trimesh:
+    zs = list(np.arange(z0, z1, step)) + [z1]
+    path = [(*cl(z), z) for z in zs]
+    return _tube(path, [r_fn(z) for z in zs], nt=max(48, p.segments // 2))
+
+
+def _taper(r0: float, z0: float, r1: float, z1: float):
+    def r_fn(z: float) -> float:
+        u = min(1.0, max(0.0, (z - z0) / max(z1 - z0, 1e-9)))
+        return r0 + (r1 - r0) * u
+    return r_fn
+
+
+def planned_branches(p: PotParams, z_rim: float, top: float
+                     ) -> list[tuple[float, float, float]]:
+    """(z_attach, climb, azimuth) per branch that actually fits.  Shared
+    with the tests so genus expectations track the skip logic."""
+    out = []
+    n = int(p.num_branches)
+    span = top - z_rim
+    for k in range(n):
+        frac = 0.28 + (0.44 * k / (n - 1) if n > 1 else 0.12)
+        z_att = z_rim + span * frac
+        climb = min(p.branch_length, top - 8.0 - z_att)
+        if climb >= 22.0:
+            out.append((z_att, climb, k * _GOLDEN + 0.8))
+    return out
+
+
+def _branches(p: PotParams, z_rim: float, top: float, r_fn, cl
+              ) -> tuple[list[trimesh.Trimesh], list[trimesh.Trimesh]]:
+    """Side stems curving off the main one: they leave at ~35 degrees off
+    vertical (printable), ease upright, and end in an open bore of their
+    own that connects to the main water column - one flower per branch."""
+    solids, cutters = [], []
+    for z_att, climb, azim in planned_branches(p, z_rim, top):
+        reach = 0.40 * climb          # base slope 0.63 -> 32 deg + sway
+        rb0 = min(5.4, 0.8 * r_fn(z_att))
+        steps = max(8, int(climb / 2.5))
+        path, radii = [], []
+        for i in range(steps + 1):
+            t = i / steps
+            rad = reach * math.sin(t * math.pi / 2.0)
+            z = z_att + climb * t
+            cx, cy = cl(z)
+            path.append((cx + rad * math.cos(azim),
+                         cy + rad * math.sin(azim), z))
+            radii.append(rb0 + (_BRANCH_TIP_R - rb0) * t)
+        solids.append(_tube(path, radii))
+        tip = path[-1]
+        bore_path = path + [(tip[0], tip[1], tip[2] + 3.0)]
+        cutters.append(_tube(bore_path, [_BRANCH_BORE_R] * len(bore_path)))
+
+        # one small leaf at mid-branch, swung away from the branch's own
+        # direction so it never hangs over the open tip (the bore must
+        # exit into clear air, not into a leaf's underside), and clipped
+        # so no branch leaf rises past the main stem's tip
+        pz_leaf = path[int(steps * 0.5)][2]
+        length = min(p.leaf_length * 0.55, (top - 1.0 - pz_leaf) / 0.95)
+        if length < 12.0:
+            continue
+        leaf = _leaf(length, length * 0.34, max(3.0, length * 0.075))
+        leaf.apply_translation((0, 0, length * 0.42))
+        leaf.apply_transform(trimesh.transformations.rotation_matrix(
+            math.radians(min(p.leaf_angle, 28.0)), [0, 1, 0]))
+        leaf.apply_transform(trimesh.transformations.rotation_matrix(
+            azim + 1.1, [0, 0, 1]))
+        px, py, pz = path[int(steps * 0.5)]
+        leaf.apply_translation((px, py, pz))
+        solids.append(leaf)
+    return solids, cutters
+
+
 def floor_keep_out(p: PotParams) -> float:
     """Radius on the floor claimed by the stem (or its socket boss):
     drainage holes inside it would be plugged from above."""
@@ -117,7 +249,7 @@ def _leaf(length: float, width: float, thickness: float) -> trimesh.Trimesh:
     return lens
 
 
-def _leaves(p: PotParams, z_rim: float, z_top: float, r_tip: float
+def _leaves(p: PotParams, z_rim: float, z_top: float, r_tip: float, cl
             ) -> list[trimesh.Trimesh]:
     out = []
     n = max(1, int(p.num_leaves))
@@ -135,6 +267,8 @@ def _leaves(p: PotParams, z_rim: float, z_top: float, r_tip: float
         leaf.apply_translation((r_tip * 0.4, 0.0, z_att))
         leaf.apply_transform(
             trimesh.transformations.rotation_matrix(k * _GOLDEN, [0, 0, 1]))
+        cx, cy = cl(z_att)                     # ride the stem's sway
+        leaf.apply_translation((cx, cy, 0.0))
         out.append(leaf)
     return out
 
@@ -158,14 +292,15 @@ def stem_parts(p: PotParams, floor_top_z: float
                ) -> tuple[list[trimesh.Trimesh], list[trimesh.Trimesh]]:
     """(solids, cutters) for a PRINTED (fused) stem, in vessel coordinates."""
     top = p.height + p.stem_length
-    section = _round(p)
-    stem = lathe(resample([(_STEM_R_BASE, floor_top_z - 2.0),
-                           (_STEM_R_TIP, top)], 3.0), section, False)
-    bore = lathe(resample([(p.stem_bore / 2.0, floor_top_z + 6.0),
-                           (p.stem_bore / 2.0, top + 2.0)], 4.0),
-                 section, False)
-    solids = [stem] + _leaves(p, p.height, top, _STEM_R_TIP)
-    cutters = [bore] + _water_holes(p, floor_top_z + 14.0, p.height - 10.0)
+    cl = _centerline(p, p.height, top)
+    r_fn = _taper(_STEM_R_BASE, floor_top_z - 2.0, _STEM_R_TIP, top)
+    stem = _shaft_tube(p, floor_top_z - 2.0, top, r_fn, cl)
+    bore = _shaft_tube(p, floor_top_z + 6.0, top + 2.0,
+                       lambda z: p.stem_bore / 2.0, cl)
+    b_solids, b_cutters = _branches(p, p.height, top, r_fn, cl)
+    solids = [stem] + b_solids + _leaves(p, p.height, top, _STEM_R_TIP, cl)
+    cutters = ([bore] + b_cutters
+               + _water_holes(p, floor_top_z + 14.0, p.height - 10.0))
     return solids, cutters
 
 
@@ -205,20 +340,22 @@ def build_stem_piece(p: PotParams, floor_top_z: float) -> trimesh.Trimesh:
     top = z_rim + p.stem_length
 
     section = _round(p)
+    cl = _centerline(p, z_rim, top)
+    r_fn = _taper(_STEM_R_BASE, z_f2, _STEM_R_TIP, top)
     stub = _thread_mesh(p, _CORE_R, 0.0, _STUB_H + 0.5)
     flange = lathe(resample([(_CORE_R, z_f0),
                              (_FLANGE_R, z_f1),
                              (_FLANGE_R, z_f2),
                              (_STEM_R_BASE, z_neck)], 2.0),
                    section, False)
-    shaft = lathe(resample([(_STEM_R_BASE, z_f2),
-                            (_STEM_R_TIP, top)], 3.0), section, False)
-    bore = lathe(resample([(p.stem_bore / 2.0, _STUB_H + 2.0),
-                           (p.stem_bore / 2.0, top + 2.0)], 4.0),
-                 section, False)
+    shaft = _shaft_tube(p, z_f2, top, r_fn, cl)
+    bore = _shaft_tube(p, _STUB_H + 2.0, top + 2.0,
+                       lambda z: p.stem_bore / 2.0, cl)
+    b_solids, b_cutters = _branches(p, z_rim, top, r_fn, cl)
 
-    solids = [stub, flange, shaft] + _leaves(p, z_rim, top, _STEM_R_TIP)
-    cutters = [bore] + _water_holes(p, z_neck + 6.0, z_rim - 10.0)
+    solids = ([stub, flange, shaft] + b_solids
+              + _leaves(p, z_rim, top, _STEM_R_TIP, cl))
+    cutters = [bore] + b_cutters + _water_holes(p, z_neck + 6.0, z_rim - 10.0)
     piece = _boolean("union", solids)
     piece = _boolean("difference", [piece] + cutters)
     return _finish(piece, center=False)
