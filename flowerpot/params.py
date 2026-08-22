@@ -195,6 +195,16 @@ class PotParams:
     #                                  the rim and looks like raked soil, with
     #                                  a hole for the stem and two finger /
     #                                  watering holes.  The planted-plant look.
+    stem_curve: float = 6.0          # gentle lean (mm of sway) of the stem
+    #                                  above the rim; 0 = perfectly straight.
+    #                                  Below the rim the stem stays coaxial so
+    #                                  the socket and water holes are untouched.
+    num_branches: int = 2            # side stems branching off the main one
+    #                                  above the rim, each curving upright to
+    #                                  its own open tip - one flower per branch
+    branch_length: float = 70.0      # how far each branch climbs; branches
+    #                                  that would poke past the stem tip are
+    #                                  shortened or skipped automatically
 
     # ------------------------------------------------------------------
     # 5a. Mason-jar greenhouse seat (classic pot, self-watering inner,
@@ -350,6 +360,17 @@ class PotParams:
                     "the stem stands where the center drainage hole goes - "
                     "use ring, grid or none"
                 )
+            if not 0.0 <= self.stem_curve <= 14.0:
+                raise ParameterError("stem_curve should be 0-14 mm of sway")
+            if self.stem_curve > 0 and self.stem_length < 6.0 * self.stem_curve:
+                raise ParameterError(
+                    "stem_curve is too strong for this stem_length: the lean "
+                    "would overhang - keep stem_length >= 6 x stem_curve"
+                )
+            if not 0 <= int(self.num_branches) <= 5:
+                raise ParameterError("num_branches should be 0-5")
+            if self.num_branches and not 25.0 <= self.branch_length <= 150.0:
+                raise ParameterError("branch_length should be 25-150 mm")
         if self.surface_texture not in TEXTURES:
             raise ParameterError(
                 f"unknown surface_texture {self.surface_texture!r}; "

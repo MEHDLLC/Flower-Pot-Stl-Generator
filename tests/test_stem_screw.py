@@ -123,3 +123,39 @@ def test_screw_and_soil_cap_guardrails():
         PotParams(stem=True, stem_mount="glue").validate()
     with pytest.raises(ParameterError):
         PotParams(soil_cap=True, jar_greenhouse=True).validate()
+
+
+def test_branches_open_into_the_main_water_column():
+    from flowerpot.stem import planned_branches
+    p = _screw_params(stem_mount="printed", num_branches=3,
+                      branch_length=60.0, height=180, top_diameter=120,
+                      vase_profile="bud", stem_length=120.0)
+    vase = build_pot(p)
+    rep = audit(vase, p.overhang_limit_deg)
+    assert vase.is_watertight and rep.overhang_faces == 0
+    planned = planned_branches(p, p.height, p.height + p.stem_length)
+    assert len(planned) >= 2                          # room for most of them
+    # each branch bore is one more tunnel joining the shared column
+    from flowerpot.profile import build_profiles
+    from flowerpot.stem import _water_holes
+    floor_z = build_profiles(p).floor_top_z
+    n_water = len(_water_holes(p, floor_z + 14.0, p.height - 10.0))
+    assert round((2 - vase.euler_number) / 2) == n_water + len(planned)
+
+
+def test_straight_unbranched_stem_still_works():
+    p = _screw_params(stem_mount="printed", stem_curve=0.0, num_branches=0)
+    vase = build_pot(p)
+    rep = audit(vase, p.overhang_limit_deg)
+    assert vase.is_watertight and rep.overhang_faces == 0
+
+
+def test_curve_and_branch_guardrails():
+    with pytest.raises(ParameterError):
+        PotParams(stem=True, stem_curve=20.0).validate()
+    with pytest.raises(ParameterError):                # lean too strong
+        PotParams(stem=True, stem_curve=12.0, stem_length=40.0).validate()
+    with pytest.raises(ParameterError):
+        PotParams(stem=True, num_branches=9).validate()
+    with pytest.raises(ParameterError):
+        PotParams(stem=True, num_branches=2, branch_length=10.0).validate()
