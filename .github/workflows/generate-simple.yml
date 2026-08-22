@@ -1,0 +1,75 @@
+# Actions -> "Generate · simple pot" -> Run workflow.
+# The store-bought nursery pot: thin walls, plain shapes, practical
+# drainage. "scale" is the size control - it resizes the whole pot
+# (default proportions: 145 mm tall, 150/105 mm diameters, small lip)
+# while the wall thickness stays exactly what you set. Different
+# proportions, textures etc. go in extra_args, e.g.
+#   --height 120 --top-diameter 130 --bottom-diameter 95 --surface-texture waves
+name: "Generate · simple pot"
+
+on:
+  workflow_dispatch:
+    inputs:
+      shape:
+        description: "Shape"
+        type: choice
+        default: round
+        options: [round, square, hexagonal, octagon]
+      scale:
+        description: "Size: scale factor 0.2-3.0 (1.0 = 145 mm tall)"
+        type: string
+        default: "1.0"
+      wall_thickness:
+        description: "Wall thickness in mm (1.2-1.6 = nursery thin)"
+        type: string
+        default: "1.6"
+      height:
+        description: "Height in mm BEFORE scaling"
+        type: string
+        default: "145"
+      drainage_pattern:
+        description: "Bottom drainage"
+        type: choice
+        default: ring
+        options: [ring, center, grid, none]
+      num_side_holes:
+        description: "Side drainage ports (grow-pot style; 0 = none)"
+        type: choice
+        default: "0"
+        options: ["0", "4", "6", "8"]
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: black
+      printer:
+        description: "Printer profile embedded in the .3mf"
+        type: choice
+        default: creality-k1-max
+        options: [creality-k1-max, creality-k1, creality-ender3-v3-ke, none]
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  pot:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Simple pot: ${{ inputs.shape }} at scale ${{ inputs.scale }}"
+      artifact: "simple-${{ inputs.shape }}"
+      cli_args: >-
+        --name simple_${{ inputs.shape }}
+        --pot-style ${{ inputs.shape == 'round' && 'classic_tapered' || (inputs.shape == 'octagon' && 'hexagonal' || inputs.shape) }}
+        ${{ inputs.shape == 'octagon' && '--hex-sides 8' || '' }}
+        ${{ inputs.shape == 'round' && '--belly 0' || '' }}
+        --scale ${{ inputs.scale }}
+        --wall-thickness ${{ inputs.wall_thickness }}
+        --height ${{ inputs.height }}
+        --base-thickness 2.4
+        --rim-width 2.5
+        --rim-height 5
+        --drainage-pattern ${{ inputs.drainage_pattern }}
+        --num-side-holes ${{ inputs.num_side_holes }}
+        --color ${{ inputs.color }}
+        --printer ${{ inputs.printer }}
+        ${{ inputs.extra_args }}

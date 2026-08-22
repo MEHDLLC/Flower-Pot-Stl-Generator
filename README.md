@@ -74,6 +74,7 @@ pick the product — each has its own *Run workflow* form:
 | **Generate · reservoir insert** | drop-in platform + fill tube for any existing pot |
 | **Generate · hydroponic tower** | stackable column segments with angled plant ports + net cups |
 | **Generate · modular garden** | dovetail-connected seed trays, the flower set, the rotating stack |
+| **Generate · simple pot** | thin-walled nursery pots: shape, scale, wall, side + bottom drainage |
 
 Anything not on a form goes in *extra_args* exactly as you would type it on the CLI.
 Every run uploads an artifact with the `.stl`, the colored `.3mf` and a `.png`
@@ -180,6 +181,9 @@ options that compose with everything above:
 * **`--num-side-holes`**: grow-pot drainage — diamond ports through the wall just
   above the floor (diamond so they print support-free), combinable with any bottom
   pattern or used alone.
+
+These have their own workflow form — **Generate · simple pot** puts shape, scale,
+wall thickness and both drainage locations directly on the form. On the CLI:
 
 ```bash
 # a classic thin nursery pot
