@@ -55,6 +55,18 @@ def export_pot(
     """
     result = ExportResult()
 
+    if params.scale != 1.0:
+        # resize the design's proportions; walls, floors and print-fit
+        # clearances (and the real-world jar_mouth_od) stay as set
+        s = params.scale
+        params = params.with_(scale=1.0, **{
+            f: getattr(params, f) * s
+            for f in ("height", "top_diameter", "bottom_diameter",
+                      "rim_width", "rim_height", "inner_base_chamfer",
+                      "drainage_hole_radius", "side_hole_radius",
+                      "texture_cell", "rib_depth", "hex_corner_round",
+                      "reservoir_height", "saucer_height")})
+
     for warning in params.validate():
         print(f"  WARN {warning}", file=sys.stderr)
 

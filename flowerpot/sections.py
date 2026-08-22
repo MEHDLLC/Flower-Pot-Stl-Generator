@@ -231,6 +231,7 @@ _SECTIONS = {
     "classic_tapered": RoundSection,
     "ribbed_spiral": RibbedSection,
     "hexagonal": PolygonSection,
+    "square": PolygonSection,
     "low_poly_faceted": FacetedSection,
 }
 

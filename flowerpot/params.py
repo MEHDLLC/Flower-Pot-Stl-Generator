@@ -25,6 +25,7 @@ STYLES: dict[str, str] = {
     "low_poly_faceted": "Geometric crystal look - stacked bands of polygonal facets, rotated band to band.",
     "ribbed_spiral": "Fluted vertical ribs that can be twisted into a spiral.",
     "hexagonal": "Modern six-sided prism with crisp vertical corners.",
+    "square": "Four-sided box pot with rounded corners - the nursery classic.",
 }
 
 #: Drainage layouts understood by the generator.
@@ -66,6 +67,16 @@ class PotParams:
     #                                  do not undercut the wall.
 
     # ------------------------------------------------------------------
+    # 1b. Uniform scale
+    # ------------------------------------------------------------------
+    scale: float = 1.0               # resizes the pot's PROPORTIONS (height,
+    #                                  diameters, rim, hole sizes, texture
+    #                                  cells...) while wall_thickness,
+    #                                  base_thickness and every print-fit
+    #                                  clearance stay exactly as set - shrink
+    #                                  a design without thinning its walls.
+
+    # ------------------------------------------------------------------
     # 2. Drainage
     # ------------------------------------------------------------------
     drainage_pattern: str = "ring"   # "center" | "ring" | "grid" | "none"
@@ -73,6 +84,11 @@ class PotParams:
     num_drainage_holes: int = 5          # used by "ring" and "grid"
     drainage_ring_fraction: float = 0.55  # ring radius as a fraction of the usable
     #                                       floor radius (0.3 lazy centre, 0.8 near wall)
+    num_side_holes: int = 0          # grow-pot style drainage: diamond ports
+    #                                  through the wall just above the floor.
+    #                                  0 = none; combine freely with the
+    #                                  bottom patterns above.
+    side_hole_radius: float = 4.0    # half-width of each side port
 
     # ------------------------------------------------------------------
     # 3. Rim
@@ -230,6 +246,8 @@ class PotParams:
     @property
     def sides(self) -> int:
         """Number of straight sides for the polygonal styles (1 == round)."""
+        if self.pot_style == "square":
+            return 4
         if self.pot_style == "hexagonal":
             return max(3, int(self.hex_sides))
         if self.pot_style == "low_poly_faceted":
@@ -287,6 +305,10 @@ class PotParams:
                      "base_thickness", "segments", "vertical_step"):
             if getattr(self, name) <= 0:
                 raise ParameterError(f"{name} must be greater than zero")
+        if not 0.2 <= self.scale <= 3.0:
+            raise ParameterError("scale should be between 0.2 and 3.0")
+        if self.num_side_holes < 0:
+            raise ParameterError("num_side_holes cannot be negative")
 
         smallest_radius = min(self.top_radius, self.bottom_radius)
         if self.wall_thickness >= smallest_radius * 0.8:

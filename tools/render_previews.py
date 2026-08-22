@@ -204,6 +204,33 @@ def colors_figure(out: Path) -> None:
     print(f"-> {out / 'colors.png'}")
 
 
+def nursery_figure(out: Path) -> None:
+    import trimesh
+    thin = dict(wall_thickness=1.4, base_thickness=2.0, rim_width=2.5,
+                rim_height=5.0, num_side_holes=6, segments=110,
+                vertical_step=2.5)
+    cases = []
+    for style, label in (("classic_tapered", "nursery round"),
+                         ("square", "nursery square"),
+                         ("hexagonal", "nursery hexagon")):
+        p = PotParams(pot_style=style, **thin)
+        cases.append((f"{label} (1.4 mm wall)", build_pot(p), "charcoal"))
+    # the same design at three scales, walls identical
+    family = []
+    for i, sc in enumerate((1.0, 0.7, 0.45)):
+        p = PotParams(pot_style="classic_tapered", **thin)
+        q = build_pot(PotParams(**{**p.to_dict(),
+                                   "height": 145 * sc, "top_diameter": 150 * sc,
+                                   "bottom_diameter": 105 * sc,
+                                   "rim_width": 2.5 * sc, "rim_height": 5 * sc,
+                                   "drainage_hole_radius": 6 * sc}))
+        q.apply_translation((sum(150 * s_ * 0.55 for s_ in (1.0, 0.7, 0.45)[:i]), 0, 0))
+        family.append(q)
+    cases.append(("scale 1.0 / 0.7 / 0.45 - same walls",
+                  trimesh.util.concatenate(family), "charcoal"))
+    mesh_grid(cases, out / "nursery.png")
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -221,6 +248,7 @@ def main(outdir: str = "docs/img") -> None:
     drainage_figure(out)
     extras_figure(out)
     colors_figure(out)
+    nursery_figure(out)
 
 
 if __name__ == "__main__":

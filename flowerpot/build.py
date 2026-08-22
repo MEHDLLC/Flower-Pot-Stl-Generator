@@ -102,6 +102,34 @@ def _boolean(op: str, meshes: list[trimesh.Trimesh]) -> trimesh.Trimesh:
         ) from exc
 
 
+def _prism(profile_yz: list[tuple[float, float]], x0: float, x1: float) -> trimesh.Trimesh:
+    """Convex prism along X from a (y, z) profile - used for the diamond
+    ports whose roofs must slope instead of bridging."""
+    n = len(profile_yz)
+    verts = ([(x0, y, z) for y, z in profile_yz]
+             + [(x1, y, z) for y, z in profile_yz])
+    faces = []
+    for i in range(1, n - 1):                       # end caps (convex fans)
+        faces.append([0, i + 1, i])
+        faces.append([n, n + i, n + i + 1])
+    for i in range(n):                              # side quads
+        j = (i + 1) % n
+        faces.append([i, j, n + j])
+        faces.append([i, n + j, n + i])
+    mesh = trimesh.Trimesh(vertices=verts, faces=faces, process=True)
+    if mesh.volume < 0:
+        mesh.invert()
+    return mesh
+
+
+def _diamond_port(x0: float, x1: float, z_center: float,
+                  half_w: float, up: float, down: float) -> trimesh.Trimesh:
+    """Elongated diamond prism along X: roof slope = atan(half_w / up)."""
+    profile = [(0.0, z_center - down), (half_w, z_center),
+               (0.0, z_center + up), (-half_w, z_center)]
+    return _prism(profile, x0, x1)
+
+
 # ---------------------------------------------------------------------------
 # drainage
 # ---------------------------------------------------------------------------
@@ -151,6 +179,27 @@ def drainage_positions(p: PotParams, prof: Profiles) -> list[tuple[float, float]
     raise ParameterError(f"unknown drainage_pattern {pattern!r}")
 
 
+def side_drainage_cutters(p: PotParams, prof: Profiles) -> list[trimesh.Trimesh]:
+    """Grow-pot side drainage: diamond ports through the wall just above the
+    floor.  Diamond, not round - a round horizontal hole's ceiling would blow
+    the overhang budget; the diamond's roof stays near 35 degrees."""
+    if p.num_side_holes <= 0:
+        return []
+    r = p.side_hole_radius
+    z_center = prof.floor_top_z + max(p.inner_base_chamfer, 0.0) + r + 3.0
+    reach = prof.rim_outer_radius + p.rib_depth + p.texture_depth + 6.0
+    cutters = []
+    for k in range(int(p.num_side_holes)):
+        a = 2.0 * math.pi * k / p.num_side_holes
+        port = _diamond_port(x0=p.bottom_radius * 0.35, x1=reach,
+                             z_center=z_center, half_w=r,
+                             up=r * 1.4, down=r * 1.1)
+        port.apply_transform(
+            trimesh.transformations.rotation_matrix(a, [0, 0, 1]))
+        cutters.append(port)
+    return cutters
+
+
 def drainage_cutters(p: PotParams, prof: Profiles) -> list[trimesh.Trimesh]:
     """Cylinders that punch through the floor."""
     cutters = []
@@ -197,7 +246,7 @@ def build_pot(p: PotParams) -> trimesh.Trimesh:
     cavity = lathe(inner_rings, section, decorate=False)
 
     pot = _boolean("difference", [body, cavity])
-    cutters = drainage_cutters(p, prof)
+    cutters = drainage_cutters(p, prof) + side_drainage_cutters(p, prof)
     if p.jar_greenhouse:
         from .jar import seat_cutters
         cutters = cutters + seat_cutters(p, p.height)

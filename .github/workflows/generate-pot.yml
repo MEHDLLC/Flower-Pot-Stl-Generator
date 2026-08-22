@@ -11,7 +11,7 @@ on:
         description: "Pot style"
         type: choice
         default: classic_tapered
-        options: [classic_tapered, low_poly_faceted, ribbed_spiral, hexagonal]
+        options: [classic_tapered, low_poly_faceted, ribbed_spiral, hexagonal, square]
       surface_texture:
         description: "Surface texture"
         type: choice

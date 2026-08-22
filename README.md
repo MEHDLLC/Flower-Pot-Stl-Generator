@@ -103,6 +103,7 @@ Set with `pot_style` / `--pot-style`.
 | `low_poly_faceted` | Geometric crystal — stacked bands of facets that rotate half a facet per band | `facet_count`, `facet_bands`, `facet_rotate` |
 | `ribbed_spiral` | Vertical flutes, optionally twisted into a spiral | `rib_count`, `rib_depth`, `rib_twist_degrees` |
 | `hexagonal` | Modern six-sided prism with crisp corners | `hex_sides` (8 = octagon), `hex_corner_round` |
+| `square` | Four-sided box pot with rounded corners — the nursery classic | `hex_corner_round` |
 
 The cavity follows the same cross-section as the outside, so the wall stays a constant
 thickness whatever style you pick. Ribs are the exception: they are added *outside* the
@@ -162,6 +163,35 @@ machine's plate, and the export warns if the pot doesn't fit the bed. Slicers tr
 the payload as a starting point - anything can be adjusted after opening. The
 geometry stays inline in the standard `3D/3dmodel.model`, so the file remains an
 ordinary valid 3MF for every other consumer.
+
+## Simple nursery pots
+
+![nursery pots](docs/img/nursery.png)
+
+The flimsy-pot recipe — thin walls, plain shapes, practical drainage — is three
+options that compose with everything above:
+
+* **shapes**: `--pot-style` `classic_tapered` (round), `square`, `hexagonal`
+  (`--hex-sides 8` = octagon);
+* **`--scale`**: resize the whole design (0.2–3.0×) while `wall_thickness`,
+  `base_thickness` and every print-fit clearance stay exactly as set — shrink a pot
+  to seedling size without its walls becoming tissue paper, or blow it up without
+  printing solid slabs;
+* **`--num-side-holes`**: grow-pot drainage — diamond ports through the wall just
+  above the floor (diamond so they print support-free), combinable with any bottom
+  pattern or used alone.
+
+```bash
+# a classic thin nursery pot
+python -m flowerpot --wall-thickness 1.4 --base-thickness 2 \
+    --rim-width 2.5 --rim-height 5 --drainage-pattern ring
+
+# a square grow pot with side + bottom drainage
+python -m flowerpot --pot-style square --wall-thickness 1.6 --num-side-holes 6
+
+# the same pot at 60% size, walls unchanged
+python -m flowerpot --scale 0.6 --wall-thickness 1.4 --base-thickness 2
+```
 
 ## Self-watering set
 
@@ -319,7 +349,8 @@ All dimensions in **millimetres**, angles in **degrees**. Defaults in brackets.
 | `height` | 145 | build plate to rim |
 | `top_diameter` | 150 | outside width at the top of the wall, *under* the rim |
 | `bottom_diameter` | 105 | footprint width. Larger = more stable and less wall lean |
-| `wall_thickness` | 3.0 | 2.4–3.2 mm suits a 0.4 mm nozzle |
+| `wall_thickness` | 3.0 | 2.4–3.2 mm suits a 0.4 mm nozzle; 1.2–1.6 for nursery-thin |
+| `scale` | 1.0 | resize the proportions; walls, floor and clearances stay as set |
 | `base_thickness` | 5.0 | floor under the soil; keep above `wall_thickness` |
 
 For the polygonal styles the diameters are measured **corner to corner**, so the
@@ -333,6 +364,8 @@ bounding box of the STL always matches what you asked for.
 |---|---|---|
 | `drainage_pattern` | `"ring"` | `center` \| `ring` \| `grid` \| `none` |
 | `drainage_hole_radius` | 6.0 | radius, not diameter |
+| `num_side_holes` | 0 | grow-pot side ports above the floor (0 = none) |
+| `side_hole_radius` | 4.0 | half-width of each side port |
 | `num_drainage_holes` | 5 | used by `ring` and `grid` |
 | `drainage_ring_fraction` | 0.55 | ring radius as a fraction of the usable floor |
 

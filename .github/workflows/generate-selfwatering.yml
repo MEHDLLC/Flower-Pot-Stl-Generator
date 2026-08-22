@@ -11,7 +11,7 @@ on:
         description: "Outer pot style"
         type: choice
         default: classic_tapered
-        options: [classic_tapered, ribbed_spiral, hexagonal]
+        options: [classic_tapered, ribbed_spiral, hexagonal, square]
       surface_texture:
         description: "Outer surface texture"
         type: choice
