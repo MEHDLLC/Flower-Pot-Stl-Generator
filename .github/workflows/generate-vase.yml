@@ -33,9 +33,10 @@ on:
         type: string
         default: "110"
       stem:
-        description: "Grow a hollow leafy stem (the planted-flower look)"
-        type: boolean
-        default: false
+        description: "Hollow leafy stem (screw = separate screw-in piece, unscrews for cleaning)"
+        type: choice
+        default: none
+        options: [none, printed, screw]
       stem_length:
         description: "Stem rise above the rim in mm (with stem)"
         type: string
@@ -58,7 +59,7 @@ jobs:
   vase:
     uses: ./.github/workflows/generate-common.yml
     with:
-      title: "Vase: ${{ inputs.vase_profile }}${{ inputs.stem && ' with stem' || '' }}"
+      title: "Vase: ${{ inputs.vase_profile }}${{ inputs.stem != 'none' && ' with stem' || '' }}"
       artifact: "vase-${{ inputs.vase_profile }}"
       cli_args: >-
         --name vase_${{ inputs.vase_profile }}
@@ -69,7 +70,7 @@ jobs:
         --top-diameter ${{ inputs.top_diameter }}
         --drainage-pattern none
         --no-add-top-rim
-        ${{ inputs.stem && '--stem' || '' }}
+        ${{ inputs.stem != 'none' && format('--stem --stem-mount {0}', inputs.stem) || '' }}
         --stem-length ${{ inputs.stem_length }}
         --color ${{ inputs.color }}
         --printer ${{ inputs.printer }}

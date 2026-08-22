@@ -186,6 +186,15 @@ class PotParams:
     leaf_length: float = 55.0
     leaf_angle: float = 25.0         # tilt from the stem axis.  Hard-capped at
     #                                  30 so the leaves print support-free.
+    stem_mount: str = "printed"      # "printed" fuses the stem into the vessel;
+    #                                  "screw" adds a threaded socket to the
+    #                                  floor and exports the stem separately -
+    #                                  easier cleaning, and stems taller than
+    #                                  the vessel print.
+    soil_cap: bool = False           # removable cover that seats just below
+    #                                  the rim and looks like raked soil, with
+    #                                  a hole for the stem and two finger /
+    #                                  watering holes.  The planted-plant look.
 
     # ------------------------------------------------------------------
     # 5a. Mason-jar greenhouse seat (classic pot, self-watering inner,
@@ -317,6 +326,12 @@ class PotParams:
             raise ParameterError(
                 f"unknown vase_profile {self.vase_profile!r}; "
                 f"choose from {list(VASE_PROFILES)}"
+            )
+        if self.stem_mount not in ("printed", "screw"):
+            raise ParameterError('stem_mount must be "printed" or "screw"')
+        if self.soil_cap and self.jar_greenhouse:
+            raise ParameterError(
+                "soil_cap and jar_greenhouse both occupy the mouth - pick one"
             )
         if self.stem:
             if not 10.0 <= self.leaf_angle <= 30.0:
