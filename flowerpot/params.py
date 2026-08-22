@@ -185,7 +185,15 @@ class PotParams:
     num_leaves: int = 5              # leaves spiralling up the exposed stem
     leaf_length: float = 55.0
     leaf_angle: float = 25.0         # tilt from the stem axis.  Hard-capped at
-    #                                  30 so the leaves print support-free.
+    #                                  30 so the leaves print support-free -
+    #                                  except with leaf_mount "insert", where
+    #                                  leaves print flat and may droop to 60.
+    leaf_mount: str = "printed"      # "printed" fuses the leaves to the stem;
+    #                                  "insert" cuts slots instead and writes
+    #                                  the leaves as a flat <name>_leaves
+    #                                  plate - print it in a second color on a
+    #                                  single-color printer and slide each
+    #                                  leaf's tab into a slot.
     stem_mount: str = "printed"      # "printed" fuses the stem into the vessel;
     #                                  "screw" adds a threaded socket to the
     #                                  floor and exports the stem separately -
@@ -343,11 +351,16 @@ class PotParams:
             raise ParameterError(
                 "soil_cap and jar_greenhouse both occupy the mouth - pick one"
             )
+        if self.leaf_mount not in ("printed", "insert"):
+            raise ParameterError('leaf_mount must be "printed" or "insert"')
         if self.stem:
-            if not 10.0 <= self.leaf_angle <= 30.0:
+            max_leaf = 60.0 if self.leaf_mount == "insert" else 30.0
+            if not 10.0 <= self.leaf_angle <= max_leaf:
                 raise ParameterError(
-                    "leaf_angle must be 10-30 degrees: past 30 the leaf "
-                    "undersides need supports"
+                    f"leaf_angle must be 10-{max_leaf:.0f} degrees for "
+                    f'leaf_mount "{self.leaf_mount}": fused leaves past 30 '
+                    "need supports; insert leaves print flat and may droop "
+                    "to 60"
                 )
             if not 5.0 <= self.stem_bore <= 20.0:
                 raise ParameterError("stem_bore should be 5-20 mm")

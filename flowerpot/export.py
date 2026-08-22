@@ -125,6 +125,9 @@ def export_pot(
             floor_z = build_profiles(params).floor_top_z
             jobs.append((lambda q, fz=floor_z: build_stem_piece(q, fz),
                          f"{name}_stem", False))
+        if params.stem and params.leaf_mount == "insert":
+            from .stem import build_leaf_inserts
+            jobs.append((build_leaf_inserts, f"{name}_leaves", False))
         if params.soil_cap:
             from .stem import build_soil_cap
             jobs.append((build_soil_cap, f"{name}_soil_cap", False))

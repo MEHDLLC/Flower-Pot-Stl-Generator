@@ -39,7 +39,7 @@ import math
 import numpy as np
 import trimesh
 
-from .build import _boolean, _diamond_port, _finish, lathe
+from .build import _boolean, _diamond_port, _finish, _prism, lathe
 from .params import PotParams
 from .profile import resample, wall_slope, wall_radius
 from .sections import Section, make_section
@@ -61,6 +61,17 @@ _STEM_R_BASE = 8.0
 _STEM_R_TIP = 6.0
 _BRANCH_TIP_R = 4.5
 _BRANCH_BORE_R = 2.8
+
+# insert-leaf joint: a vertical slot with a gable roof (printable in the
+# standing stem) takes a flat rectangular tab on the leaf (printable lying
+# down).  One slot shape fits every leaf; flip the leaf to make it droop.
+_SLOT_HALF_T = 1.45          # slot half-thickness (tangential)
+_SLOT_HALF_H = 4.0           # slot half-height, main stem
+_SLOT_HALF_H_BR = 2.6        # slot half-height, branches
+_SLOT_PEAK = 2.2             # gable above the half-height: 56 deg roof
+_TAB_HALF_T = 1.3            # tab half-thickness: 0.15 mm play per side
+_TAB_DEPTH = 4.5             # engagement, main stem (through-wall + 2)
+_TAB_DEPTH_BR = 3.5
 
 
 class _ThreadSection(Section):
@@ -178,6 +189,16 @@ def planned_branches(p: PotParams, z_rim: float, top: float
     return out
 
 
+def branch_leaf_length(p: PotParams, top: float, z_att: float, climb: float
+                       ) -> float | None:
+    """Length of the leaf a branch carries at mid-climb, clipped so it
+    never rises past the main stem's tip; None when there is no room."""
+    steps = max(8, int(climb / 2.5))
+    pz = z_att + climb * (int(steps * 0.5) / steps)
+    length = min(p.leaf_length * 0.55, (top - 1.0 - pz) / 0.95)
+    return length if length >= 12.0 else None
+
+
 def _branches(p: PotParams, z_rim: float, top: float, r_fn, cl
               ) -> tuple[list[trimesh.Trimesh], list[trimesh.Trimesh]]:
     """Side stems curving off the main one: they leave at ~35 degrees off
@@ -206,9 +227,15 @@ def _branches(p: PotParams, z_rim: float, top: float, r_fn, cl
         # direction so it never hangs over the open tip (the bore must
         # exit into clear air, not into a leaf's underside), and clipped
         # so no branch leaf rises past the main stem's tip
-        pz_leaf = path[int(steps * 0.5)][2]
-        length = min(p.leaf_length * 0.55, (top - 1.0 - pz_leaf) / 0.95)
-        if length < 12.0:
+        length = branch_leaf_length(p, top, z_att, climb)
+        if length is None:
+            continue
+        i_leaf = int(steps * 0.5)
+        px, py, pz = path[i_leaf]
+        if p.leaf_mount == "insert":
+            r_here = radii[i_leaf]
+            cutters.append(_place_slot(_slot(r_here + 3.0, _SLOT_HALF_H_BR),
+                                       azim + 1.1, px, py, pz))
             continue
         leaf = _leaf(length, length * 0.34, max(3.0, length * 0.075))
         leaf.apply_translation((0, 0, length * 0.42))
@@ -216,7 +243,6 @@ def _branches(p: PotParams, z_rim: float, top: float, r_fn, cl
             math.radians(min(p.leaf_angle, 28.0)), [0, 1, 0]))
         leaf.apply_transform(trimesh.transformations.rotation_matrix(
             azim + 1.1, [0, 0, 1]))
-        px, py, pz = path[int(steps * 0.5)]
         leaf.apply_translation((px, py, pz))
         solids.append(leaf)
     return solids, cutters
@@ -249,27 +275,82 @@ def _leaf(length: float, width: float, thickness: float) -> trimesh.Trimesh:
     return lens
 
 
-def _leaves(p: PotParams, z_rim: float, z_top: float, r_tip: float, cl
-            ) -> list[trimesh.Trimesh]:
-    out = []
+def _leaf_sites(p: PotParams, z_rim: float, z_top: float
+                ) -> list[tuple[float, float, float, float]]:
+    """(z_attach, length, azimuth, tilt_deg) per main-stem leaf - shared by
+    the fused leaves, the insert slots and the leaf plate.  A leaf whose
+    sector a branch climbs through is swung aside: fused it would merely
+    merge into the branch, but an insert leaf has to actually fit."""
+    branches = planned_branches(p, z_rim, z_top)
+
+    def clashes(azim: float, z_att: float, length: float) -> bool:
+        for zb, climb, ab in branches:
+            gap = (azim - ab + math.pi) % (2.0 * math.pi) - math.pi
+            if abs(gap) < 0.6 and z_att < zb + climb \
+                    and z_att + 0.8 * length > zb + 4.0:
+                return True
+        return False
+
+    sites = []
     n = max(1, int(p.num_leaves))
     z_lo = z_rim + 14.0
     z_hi = z_top - p.leaf_length * 0.75
+    cap = 60.0 if p.leaf_mount == "insert" else 30.0
     for k in range(n):
         frac = k / max(1, n - 1) if n > 1 else 0.5
         z_att = z_lo + (z_hi - z_lo) * frac
         length = p.leaf_length * (1.0 - 0.35 * frac)
-        tilt = math.radians(min(p.leaf_angle + 4.0 * math.sin(2.1 * k), 30.0))
+        azim = k * _GOLDEN
+        for _ in range(3):
+            if not clashes(azim, z_att, length):
+                break
+            azim += 1.2
+        sites.append((z_att, length, azim,
+                      min(p.leaf_angle + 4.0 * math.sin(2.1 * k), cap)))
+    return sites
+
+
+def _leaves(p: PotParams, z_rim: float, z_top: float, r_tip: float, cl
+            ) -> list[trimesh.Trimesh]:
+    out = []
+    for z_att, length, azim, tilt in _leaf_sites(p, z_rim, z_top):
         leaf = _leaf(length, length * 0.34, max(3.0, length * 0.075))
         leaf.apply_translation((0, 0, length * 0.42))
-        leaf.apply_transform(
-            trimesh.transformations.rotation_matrix(tilt, [0, 1, 0]))
+        leaf.apply_transform(trimesh.transformations.rotation_matrix(
+            math.radians(tilt), [0, 1, 0]))
         leaf.apply_translation((r_tip * 0.4, 0.0, z_att))
         leaf.apply_transform(
-            trimesh.transformations.rotation_matrix(k * _GOLDEN, [0, 0, 1]))
+            trimesh.transformations.rotation_matrix(azim, [0, 0, 1]))
         cx, cy = cl(z_att)                     # ride the stem's sway
         leaf.apply_translation((cx, cy, 0.0))
         out.append(leaf)
+    return out
+
+
+def _slot(x_outer: float, half_h: float) -> trimesh.Trimesh:
+    """Slot cutter at the origin: prism along +x (the insertion axis),
+    vertical sides, gable roof so the standing stem needs no supports."""
+    prof = [(-_SLOT_HALF_T, -half_h), (_SLOT_HALF_T, -half_h),
+            (_SLOT_HALF_T, half_h), (0.0, half_h + _SLOT_PEAK),
+            (-_SLOT_HALF_T, half_h)]
+    return _prism(prof, 0.5, x_outer)
+
+
+def _place_slot(slot: trimesh.Trimesh, azim: float,
+                x: float, y: float, z: float) -> trimesh.Trimesh:
+    slot.apply_transform(
+        trimesh.transformations.rotation_matrix(azim, [0, 0, 1]))
+    slot.apply_translation((x, y, z))
+    return slot
+
+
+def _leaf_slots(p: PotParams, z_rim: float, z_top: float, r_fn, cl
+                ) -> list[trimesh.Trimesh]:
+    out = []
+    for z_att, _length, azim, _tilt in _leaf_sites(p, z_rim, z_top):
+        cx, cy = cl(z_att)
+        out.append(_place_slot(_slot(r_fn(z_att) + 3.0, _SLOT_HALF_H),
+                               azim, cx, cy, z_att))
     return out
 
 
@@ -298,9 +379,13 @@ def stem_parts(p: PotParams, floor_top_z: float
     bore = _shaft_tube(p, floor_top_z + 6.0, top + 2.0,
                        lambda z: p.stem_bore / 2.0, cl)
     b_solids, b_cutters = _branches(p, p.height, top, r_fn, cl)
-    solids = [stem] + b_solids + _leaves(p, p.height, top, _STEM_R_TIP, cl)
+    solids = [stem] + b_solids
     cutters = ([bore] + b_cutters
                + _water_holes(p, floor_top_z + 14.0, p.height - 10.0))
+    if p.leaf_mount == "insert":
+        cutters += _leaf_slots(p, p.height, top, r_fn, cl)
+    else:
+        solids += _leaves(p, p.height, top, _STEM_R_TIP, cl)
     return solids, cutters
 
 
@@ -353,9 +438,12 @@ def build_stem_piece(p: PotParams, floor_top_z: float) -> trimesh.Trimesh:
                        lambda z: p.stem_bore / 2.0, cl)
     b_solids, b_cutters = _branches(p, z_rim, top, r_fn, cl)
 
-    solids = ([stub, flange, shaft] + b_solids
-              + _leaves(p, z_rim, top, _STEM_R_TIP, cl))
+    solids = [stub, flange, shaft] + b_solids
     cutters = [bore] + b_cutters + _water_holes(p, z_neck + 6.0, z_rim - 10.0)
+    if p.leaf_mount == "insert":
+        cutters += _leaf_slots(p, z_rim, top, r_fn, cl)
+    else:
+        solids += _leaves(p, z_rim, top, _STEM_R_TIP, cl)
     piece = _boolean("union", solids)
     piece = _boolean("difference", [piece] + cutters)
     return _finish(piece, center=False)
@@ -436,3 +524,91 @@ def build_soil_cap(p: PotParams) -> trimesh.Trimesh:
         c.apply_translation((sign * R * 0.62, 0.0, 0.0))
         cutters.append(c)
     return _finish(_boolean("difference", [cap] + cutters), center=False)
+
+
+def leaf_pose(r_att: float, azim: float, cx: float, cy: float,
+              z_att: float) -> "np.ndarray":
+    """Print frame -> stem frame for an inserted leaf: stand it upright,
+    push the tab to the stem surface, swing to the slot's azimuth."""
+    return (trimesh.transformations.translation_matrix((cx, cy, z_att))
+            @ trimesh.transformations.rotation_matrix(azim, [0, 0, 1])
+            @ trimesh.transformations.translation_matrix(
+                (r_att, _TAB_HALF_T, 0.0))
+            @ trimesh.transformations.rotation_matrix(
+                math.pi / 2.0, [1, 0, 0]))
+
+
+def _leaf_insert(p: PotParams, length: float, tilt_deg: float,
+                 main: bool, relief: trimesh.Trimesh) -> trimesh.Trimesh:
+    """One flat leaf: a rectangular tab (slides into the stem's slot)
+    with the blade bent off it at the leaf angle - the tilt is baked into
+    the part, so the slot never changes.  Prints lying down; flip it in
+    the slot to make the leaf droop instead of rise.  ``relief`` is the
+    stem (or branch), widened and mapped into the print frame: it gets
+    scooped out of the blade so the leaf hugs the stem it plugs into."""
+    hh = (_SLOT_HALF_H if main else _SLOT_HALF_H_BR) - 0.3
+    depth = _TAB_DEPTH if main else _TAB_DEPTH_BR
+    tab = _prism([(-hh, 0.0), (hh, 0.0),
+                  (hh, 2.0 * _TAB_HALF_T), (-hh, 2.0 * _TAB_HALF_T)],
+                 -depth, 2.5)
+
+    phi = math.radians(min(tilt_deg, 60.0))
+    # double-thick lens, then shave the bottom half flat: a D-section
+    # blade whose ENTIRE underside is bed contact - no overhang anywhere
+    blade = _leaf(length, length * 0.34, 2.0 * max(3.0, length * 0.075))
+    # lay it flat: lens axis +z -> +y, faces +-y -> +-z
+    blade.apply_transform(trimesh.transformations.rotation_matrix(
+        -math.pi / 2.0, [1, 0, 0]))
+    # bend the blade off the tab axis by the leaf angle (in the bed plane)
+    blade.apply_transform(trimesh.transformations.rotation_matrix(
+        -phi, [0, 0, 1]))
+    reach = 0.5 * length - 1.5
+    blade.apply_translation((reach * math.sin(phi),
+                             reach * math.cos(phi), 0.0))
+    blade = _boolean("difference", [blade, relief])
+
+    piece = _boolean("union", [tab, blade])
+    shave = trimesh.creation.box(extents=(600.0, 600.0, 100.0))
+    shave.apply_translation((0.0, 0.0, -50.0))     # flat underside at z = 0
+    return _boolean("difference", [piece, shave])
+
+
+def _main_leaf_piece(p: PotParams, z_att: float, length: float, azim: float,
+                     tilt: float, r_fn, cl) -> trimesh.Trimesh:
+    """A main-stem insert leaf whose saddle is the ACTUAL swept stem
+    (taper, curve and all) widened 1 mm, mapped into the print frame."""
+    relief = _shaft_tube(p, z_att - 30.0, z_att + 0.9 * length + 10.0,
+                         lambda z: r_fn(z) + 1.0, cl)
+    cx, cy = cl(z_att)
+    relief.apply_transform(np.linalg.inv(
+        leaf_pose(r_fn(z_att), azim, cx, cy, z_att)))
+    return _leaf_insert(p, length, tilt, True, relief)
+
+
+def build_leaf_inserts(p: PotParams) -> trimesh.Trimesh:
+    """The whole foliage as one flat plate of push-in leaves - print it in
+    a second color/filament, then slide each tab into a stem slot.  Main
+    leaves first (big tabs), branch leaves after (small tabs)."""
+    top = p.height + p.stem_length
+    r_fn = _taper(_STEM_R_BASE, 0.0, _STEM_R_TIP, top)
+    cl = _centerline(p, p.height, top)
+    pieces = [_main_leaf_piece(p, z_att, length, azim, tilt, r_fn, cl)
+              for z_att, length, azim, tilt in _leaf_sites(p, p.height, top)]
+    for z_att, climb, _azim in planned_branches(p, p.height, top):
+        length = branch_leaf_length(p, top, z_att, climb)
+        if length is None:
+            continue
+        # branches are slim and lean away from their leaf: a straight
+        # widened cylinder is relief enough
+        relief = trimesh.creation.cylinder(radius=4.9 + 1.5, height=400.0,
+                                           sections=96)
+        relief.apply_transform(trimesh.transformations.rotation_matrix(
+            math.pi / 2.0, [1, 0, 0]))
+        relief.apply_translation((-4.9, 0.0, _TAB_HALF_T))
+        pieces.append(_leaf_insert(p, length, min(p.leaf_angle, 28.0),
+                                   False, relief))
+    x = 0.0
+    for piece in pieces:
+        piece.apply_translation((x - piece.bounds[0][0], 0.0, 0.0))
+        x = piece.bounds[1][0] + 6.0
+    return _finish(trimesh.util.concatenate(pieces), center=True)
