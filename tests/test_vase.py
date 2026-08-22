@@ -47,8 +47,15 @@ def test_stem_vase_prints_support_free():
     top = vase.vertices[vase.vertices[:, 2] > vase.extents[2] - 1.0]
     r_top = np.hypot(top[:, 0], top[:, 1])
     assert r_top.min() < p.stem_bore / 2.0 + 0.5      # bore mouth is open
-    # blind bore: no through-tunnel, genus stays 0 on a drainless vessel
-    assert round((2 - vase.euler_number) / 2) == 0
+    # blind bore: every handle is a water hole through the stem wall
+    assert round((2 - vase.euler_number) / 2) == _expected_water_holes(p)
+
+
+def _expected_water_holes(p: PotParams) -> int:
+    from flowerpot.profile import build_profiles
+    from flowerpot.stem import _water_holes
+    floor_z = build_profiles(p).floor_top_z
+    return len(_water_holes(p, floor_z + 14.0, p.height - 10.0))
 
 
 def test_stem_works_in_a_plain_pot_too():
@@ -56,7 +63,8 @@ def test_stem_works_in_a_plain_pot_too():
                   segments=72, vertical_step=3.0)
     pot = build_pot(p)
     assert audit(pot, p.overhang_limit_deg).ok
-    assert round((2 - pot.euler_number) / 2) == 5     # drainage only
+    # 5 drainage holes (all outside the stem's keep-out) + the water holes
+    assert round((2 - pot.euler_number) / 2) == 5 + _expected_water_holes(p)
 
 
 def test_stem_guardrails():

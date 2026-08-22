@@ -44,10 +44,10 @@ on:
         default: ring
         options: [ring, center, grid, none]
       extras:
-        description: "Extras"
+        description: "Extras (planted_stem = screw-in leafy stem + raked-soil lid; avoid center drainage)"
         type: choice
         default: none
-        options: [none, saucer, jar_greenhouse, saucer_and_jar]
+        options: [none, saucer, jar_greenhouse, saucer_and_jar, planted_stem]
       extra_args:
         description: "Extra CLI flags (see README)"
         type: string
@@ -70,4 +70,5 @@ jobs:
         --drainage-pattern ${{ inputs.drainage_pattern }}
         ${{ (inputs.extras == 'saucer' || inputs.extras == 'saucer_and_jar') && '--generate-saucer' || '' }}
         ${{ (inputs.extras == 'jar_greenhouse' || inputs.extras == 'saucer_and_jar') && '--jar-greenhouse' || '' }}
+        ${{ inputs.extras == 'planted_stem' && '--stem --stem-mount screw --soil-cap --stem-length 90' || '' }}
         ${{ inputs.extra_args }}

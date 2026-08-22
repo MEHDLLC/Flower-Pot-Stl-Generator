@@ -250,6 +250,35 @@ def vase_figure(out: Path) -> None:
               out / "vases.png")
 
 
+def planted_figure(out: Path) -> None:
+    import math
+    import trimesh
+    from flowerpot.profile import build_profiles
+    from flowerpot.stem import (_SOCKET_H, _STUB_H, _THREAD_CLEAR,
+                                build_soil_cap, build_stem_piece)
+    p = PotParams(pot_style="classic_tapered", drainage_pattern="ring",
+                  stem=True, stem_mount="screw", soil_cap=True,
+                  stem_length=90.0, **FAST)
+    prof = build_profiles(p)
+    vessel = build_pot(p)
+    piece = build_stem_piece(p, prof.floor_top_z)
+    cap = build_soil_cap(p)
+
+    # assembled: stem screwed home, soil cap resting just below the rim
+    dz = prof.floor_top_z + _SOCKET_H - ((_STUB_H - 1.0) + _THREAD_CLEAR * 1.15)
+    stem_in = piece.copy()
+    stem_in.apply_translation((0, 0, dz))
+    cap_in = cap.copy()
+    cap_in.apply_translation((0, 0, p.height - 8.0 - cap.extents[2]))
+    assembled = trimesh.util.concatenate([vessel, stem_in, cap_in])
+
+    mesh_grid([("pot with threaded socket", vessel, "terracotta"),
+               ("screw-in stem (water holes)", piece, "sage"),
+               ("raked-soil cap", cap, "clay"),
+               ("assembled: the planted look", assembled, "terracotta")],
+              out / "planted.png")
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -269,6 +298,7 @@ def main(outdir: str = "docs/img") -> None:
     colors_figure(out)
     nursery_figure(out)
     vase_figure(out)
+    planted_figure(out)
 
 
 if __name__ == "__main__":

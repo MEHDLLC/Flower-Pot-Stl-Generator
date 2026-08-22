@@ -69,13 +69,13 @@ pick the product — each has its own *Run workflow* form:
 
 | Workflow | What it makes |
 |---|---|
-| **Generate · classic pot** | the original pots: styles, textures, drainage, optional drip saucer |
+| **Generate · classic pot** | the original pots: styles, textures, drainage, saucer / jar / planted-stem extras |
 | **Generate · self-watering set** | outer reservoir pot + inner wick-cup liner |
 | **Generate · reservoir insert** | drop-in platform + fill tube for any existing pot |
 | **Generate · hydroponic tower** | stackable column segments with angled plant ports + net cups |
 | **Generate · modular garden** | dovetail-connected seed trays, the flower set, the rotating stack |
 | **Generate · simple pot** | thin-walled nursery pots: shape, scale, wall, side + bottom drainage |
-| **Generate · vase** | six curvy silhouettes × any style × any texture, plus the planted stem |
+| **Generate · vase** | six curvy silhouettes × any style × any texture, plus the planted stem (fused or screw-in) |
 
 Anything not on a form goes in *extra_args* exactly as you would type it on the CLI.
 Every run uploads an artifact with the `.stl`, the colored `.3mf` and a `.png`
@@ -216,13 +216,32 @@ to `stem_length` above the rim, with `num_leaves` lens-shaped leaves spiralling 
 at the golden angle. The leaves tilt `leaf_angle` (hard-capped at 30°) off the stem
 so everything prints support-free. Drop a real flower or two into the `stem_bore` —
 in a watertight vase the bore holds water — and the vase reads as the flower's own
-stem. Works on any vase profile or plain pot (bonsai-pot look).
+stem. **Water holes** (diamond ports, support-free) spiral up the submerged part of
+the stem, so the vessel's water reaches the real stem inside the bore. Works on any
+vase profile or plain pot (bonsai-pot look).
+
+![planted pot](docs/img/planted.png)
+
+**`--stem-mount screw`** splits the stem into its own piece: the vessel grows a
+threaded socket on its floor and the stem is written as `<name>_stem.*` with a
+matching threaded stub (coarse 5 mm-pitch thread, flanks and run-outs all inside the
+45° overhang budget, 0.3 mm clearance — no tuning needed). Unscrew it to clean the
+vase properly, or print a stem *taller* than the vessel. Drainage holes that would
+land under the socket are dropped automatically.
+
+**`--soil-cap`** completes the potted-plant illusion: a removable lid written as
+`<name>_soil_cap.*` that rests in the pot's taper just below the rim, sculpted like
+raked soil (every bump faces up, so it prints flat with zero supports), with a
+centre hole the stem passes through and two finger holes that double as watering
+holes. Lift it out by the finger holes to water or to unscrew the stem.
 
 ```bash
 python -m flowerpot --vase-profile classic --height 220 --top-diameter 110 \
     --drainage-pattern none --no-add-top-rim
 python -m flowerpot --vase-profile bud --stem --height 180 --top-diameter 120 \
     --drainage-pattern none --no-add-top-rim --color sage
+# the full planted-pot set: pot + socket, screw-in stem, raked-soil cap
+python -m flowerpot --stem --stem-mount screw --soil-cap --stem-length 90
 ```
 
 ## Self-watering set
@@ -435,8 +454,10 @@ producing a broken mesh.
 
 **Jar greenhouse** — `jar_greenhouse`, `jar_mouth_od` (86.0), `jar_seat_depth` (10.0).
 
-**Vase** — `vase_profile` (`"none"`). **Stem** — `stem`, `stem_length` (130.0),
-`stem_bore` (9.0), `num_leaves` (5), `leaf_length` (55.0), `leaf_angle` (25.0, max 30).
+**Vase** — `vase_profile` (`"none"`). **Stem** — `stem`, `stem_mount`
+(`"printed"` fused | `"screw"` separate threaded piece), `stem_length` (130.0),
+`stem_bore` (9.0), `num_leaves` (5), `leaf_length` (55.0), `leaf_angle` (25.0, max 30),
+`soil_cap` (removable raked-soil lid, written as `<name>_soil_cap.*`).
 
 **Self-watering** — `self_watering`, `reservoir_height` (35.0), `sw_wall_gap` (5.0),
 `refill_tube_bore` (16.0), `wick_hole_radius` (4.0), `num_wick_holes` (3).

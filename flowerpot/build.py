@@ -200,12 +200,19 @@ def side_drainage_cutters(p: PotParams, prof: Profiles) -> list[trimesh.Trimesh]
     return cutters
 
 
-def drainage_cutters(p: PotParams, prof: Profiles) -> list[trimesh.Trimesh]:
-    """Cylinders that punch through the floor."""
+def drainage_cutters(p: PotParams, prof: Profiles,
+                     keep_out: float = 0.0) -> list[trimesh.Trimesh]:
+    """Cylinders that punch through the floor.
+
+    ``keep_out`` drops any hole that would collide with a solid added onto
+    the floor afterwards (a stem or its screw socket) - the solid would plug
+    the hole and its underside would hang unsupported over the void."""
     cutters = []
     top = prof.floor_top_z + max(p.inner_base_chamfer, 0.0) + 4.0
     height = top + 4.0
     for x, y in drainage_positions(p, prof):
+        if keep_out and math.hypot(x, y) < keep_out + p.drainage_hole_radius + 1.0:
+            continue
         cyl = trimesh.creation.cylinder(
             radius=p.drainage_hole_radius,
             height=height,
@@ -246,7 +253,12 @@ def build_pot(p: PotParams) -> trimesh.Trimesh:
     cavity = lathe(inner_rings, section, decorate=False)
 
     pot = _boolean("difference", [body, cavity])
-    cutters = drainage_cutters(p, prof) + side_drainage_cutters(p, prof)
+    keep_out = 0.0
+    if p.stem:
+        from .stem import floor_keep_out
+        keep_out = floor_keep_out(p)
+    cutters = (drainage_cutters(p, prof, keep_out)
+               + side_drainage_cutters(p, prof))
     if p.jar_greenhouse:
         from .jar import seat_cutters
         cutters = cutters + seat_cutters(p, p.height)
@@ -254,13 +266,19 @@ def build_pot(p: PotParams) -> trimesh.Trimesh:
         pot = _boolean("difference", [pot] + cutters)
 
     if p.stem:
-        from .stem import stem_parts
-        solids, stem_cutters = stem_parts(p, prof.floor_top_z)
+        if p.stem_mount == "screw":
+            # the vessel only gets the threaded socket; the stem is its own
+            # exported piece (see export.py / stem.build_stem_piece)
+            from .stem import socket_parts
+            solids, stem_cutters = socket_parts(p, prof.floor_top_z)
+        else:
+            from .stem import stem_parts
+            solids, stem_cutters = stem_parts(p, prof.floor_top_z)
         pot = _boolean("union", [pot] + solids)
         pot = _boolean("difference", [pot] + stem_cutters)
 
-    # the stem grows past the mouth: don't recentre around it
-    return _finish(pot, center=not p.stem)
+    # a fused stem grows past the mouth: don't recentre around it
+    return _finish(pot, center=not (p.stem and p.stem_mount == "printed"))
 
 
 def build_saucer(p: PotParams) -> trimesh.Trimesh:

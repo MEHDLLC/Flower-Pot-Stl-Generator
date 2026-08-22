@@ -120,6 +120,14 @@ def export_pot(
         ]
     else:
         jobs = [(build_pot, name, True)]
+        if params.stem and params.stem_mount == "screw":
+            from .stem import build_stem_piece
+            floor_z = build_profiles(params).floor_top_z
+            jobs.append((lambda q, fz=floor_z: build_stem_piece(q, fz),
+                         f"{name}_stem", False))
+        if params.soil_cap:
+            from .stem import build_soil_cap
+            jobs.append((build_soil_cap, f"{name}_soil_cap", False))
         if params.generate_saucer:
             jobs.append((build_saucer, f"{name}_saucer", False))
 

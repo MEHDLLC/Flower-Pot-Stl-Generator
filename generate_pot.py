@@ -50,12 +50,21 @@ PARAMS = dict(
     vase_profile="none",      # "classic"|"bud"|"gourd"|"bottle"|"cone"|"wave":
     #                           curvy vase walls; top_diameter = widest point
     stem=False,               # hollow leafy stem rising from the floor - put
-    #                           a real flower in it (leaf tilt capped at 30)
+    #                           a real flower in it (leaf tilt capped at 30);
+    #                           water holes spiral up the submerged section
+    stem_mount="printed",     # "printed" fuses the stem to the floor;
+    #                           "screw" adds a threaded socket and writes the
+    #                           stem as a separate <name>_stem piece - unscrew
+    #                           to clean, or print a taller stem than the pot
     stem_length=130.0,
     stem_bore=9.0,
     num_leaves=5,
     leaf_length=55.0,
     leaf_angle=25.0,
+    soil_cap=False,           # removable raked-"soil" lid seated below the
+    #                           rim, centre hole for the stem plus two finger
+    #                           holes - the potted-plant look, written as
+    #                           <name>_soil_cap
 
     # -- uniform scale --------------------------------------------------------
     scale=1.0,                # resize the pot's proportions; wall_thickness and
