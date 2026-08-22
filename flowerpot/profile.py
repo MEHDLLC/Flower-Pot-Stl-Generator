@@ -35,14 +35,69 @@ class Profiles:
     notes: list[str] = field(default_factory=list)
 
 
+#: vase silhouettes as (height fraction, width factor) control points,
+#: normalised so the WIDEST point = 1.0 = top_radius: top_diameter sizes the
+#: vase's widest bulge, and the mouth is as narrow as the shape wants.
+#: Piecewise LINEAR so slopes are exact and checkable; designed to stay
+#: inside the overhang budget at height >= ~1.8x the widest diameter.
+VASE_CURVES: dict[str, list[tuple[float, float]]] = {
+    "classic": [(0.0, 0.62), (0.12, 0.85), (0.30, 1.18), (0.50, 1.22),
+                (0.68, 1.05), (0.82, 0.92), (1.0, 1.0)],
+    "bud": [(0.0, 0.70), (0.14, 1.12), (0.30, 1.28), (0.48, 1.02),
+            (0.66, 0.64), (0.88, 0.56), (1.0, 0.62)],
+    "gourd": [(0.0, 0.72), (0.16, 1.10), (0.30, 1.18), (0.42, 0.92),
+              (0.52, 0.90), (0.66, 1.10), (0.78, 1.08), (1.0, 0.85)],
+    "bottle": [(0.0, 0.85), (0.32, 1.08), (0.52, 1.02), (0.80, 0.40),
+               (0.90, 0.38), (1.0, 0.42)],
+    "cone": [(0.0, 0.45), (1.0, 1.0)],
+    "wave": [(k / 32.0, 0.90 + 0.11 * math.sin(2.0 * math.pi * 3.5 * k / 32.0
+                                               + 0.6))
+             for k in range(33)],
+}
+# normalise: the widest point of every curve is exactly top_radius
+for _name, _pts in VASE_CURVES.items():
+    _peak = max(b for _, b in _pts)
+    VASE_CURVES[_name] = [(a, b / _peak) for a, b in _pts]
+
+
 def wall_radius(p: PotParams, z: float) -> float:
     """Nominal outside radius of the *wall* (rim and ribs excluded) at height z."""
     u = min(max(z / p.height, 0.0), 1.0)
+    if p.vase_profile != "none":
+        pts = VASE_CURVES[p.vase_profile]
+        zs = [a for a, _ in pts]
+        ws = [b for _, b in pts]
+        w = ws[-1]
+        for i in range(len(pts) - 1):
+            if zs[i] <= u <= zs[i + 1]:
+                t = (u - zs[i]) / max(zs[i + 1] - zs[i], 1e-9)
+                w = ws[i] + (ws[i + 1] - ws[i]) * t
+                break
+        return w * p.top_radius
     r = p.bottom_radius + (p.top_radius - p.bottom_radius) * u
     if p.pot_style == "classic_tapered" and p.belly:
         # a gentle outward bow: zero at both ends, maximum in the middle
         r += p.belly * p.top_radius * math.sin(math.pi * u)
     return r
+
+
+def check_vase_slope(p: PotParams) -> None:
+    """A curve steeper than ~42 deg from vertical fails on BOTH surfaces (the
+    outside where it widens, the inside where it narrows) - reject it with
+    the height that would fix it."""
+    if p.vase_profile == "none":
+        return
+    pts = VASE_CURVES[p.vase_profile]
+    steepest = max(abs(b2 - b1) / max(a2 - a1, 1e-9)
+                   for (a1, b1), (a2, b2) in zip(pts, pts[1:]))
+    slope = steepest * p.top_radius / p.height
+    if slope > 0.90:
+        need = steepest * p.top_radius / 0.90
+        raise ParameterError(
+            f"the {p.vase_profile!r} curve is too steep at height {p.height:.0f} "
+            f"with a {p.top_diameter:.0f} mm mouth - use height >= {need:.0f} "
+            f"or a narrower mouth"
+        )
 
 
 def wall_slope(p: PotParams, z: float) -> float:
@@ -85,17 +140,27 @@ def _solve_chamfer_start(p: PotParams, rim_radius: float, rim_bottom_z: float) -
 
 def build_profiles(p: PotParams) -> Profiles:
     """Turn the parameters into the outer and inner lathe polylines."""
+    check_vase_slope(p)
     notes: list[str] = []
-    outer: list[tuple[float, float]] = [(p.bottom_radius, 0.0)]
+    outer: list[tuple[float, float]] = [(wall_radius(p, 0.0), 0.0)]
     freeze_z = float("inf")
 
     # ---------------- outer wall + rim --------------------------------
+    def follow_wall(z_to: float) -> None:
+        """Trace the wall curve up to z_to (vases bend; lines don't)."""
+        if p.vase_profile != "none":
+            for zf, _ in VASE_CURVES[p.vase_profile]:
+                z = zf * p.height
+                if 1e-6 < z < z_to - 1e-6:
+                    outer.append((wall_radius(p, z), z))
+
     if p.add_top_rim and p.rim_width > 0:
         rim_bottom_z = max(0.0, p.height - p.rim_height)
         rim_radius = wall_radius(p, p.height) + p.rim_width
         z_chamfer = _solve_chamfer_start(p, rim_radius, rim_bottom_z)
 
         # wall up to where the chamfer starts
+        follow_wall(z_chamfer)
         outer.append((wall_radius(p, z_chamfer), z_chamfer))
         # 45+ degree underside so the rim needs no support
         outer.append((rim_radius, rim_bottom_z))
@@ -112,8 +177,9 @@ def build_profiles(p: PotParams) -> Profiles:
                 f"{p.rim_underside_angle:.0f} deg) - the pot is too short for that rim"
             )
     else:
+        follow_wall(p.height)
         outer.append((wall_radius(p, p.height), p.height))
-        widest = wall_radius(p, p.height)
+        widest = max(r for r, _ in outer)
 
     # ---------------- inner cavity ------------------------------------
     section_factor = 1.0
@@ -145,6 +211,13 @@ def build_profiles(p: PotParams) -> Profiles:
         inner.append((cavity_radius(floor_z + chamfer), floor_z + chamfer))
     else:
         inner.append((r_floor_wall, floor_z))
+
+    if p.vase_profile != "none":
+        # the cavity must follow the vase curve, breakpoint by breakpoint
+        for zf, _ in VASE_CURVES[p.vase_profile]:
+            z = zf * p.height
+            if floor_z + chamfer + 1e-6 < z < p.height - 1e-6:
+                inner.append((cavity_radius(z), z))
 
     if p.jar_greenhouse:
         from .jar import check_jar_fit, neck_rings

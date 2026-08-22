@@ -231,6 +231,25 @@ def nursery_figure(out: Path) -> None:
     mesh_grid(cases, out / "nursery.png")
 
 
+def vase_figure(out: Path) -> None:
+    base = dict(drainage_pattern="none", add_top_rim=False, **FAST)
+    cases = [
+        ("bud vase + stem", PotParams(vase_profile="bud", stem=True,
+                                      height=180, top_diameter=120, **base), "sage"),
+        ("classic amphora", PotParams(vase_profile="classic", height=220,
+                                      top_diameter=110, **base), "clay"),
+        ("bottle, honeycomb", PotParams(vase_profile="bottle",
+                                        surface_texture="honeycomb", height=240,
+                                        top_diameter=110, **base), "teal"),
+        ("gourd", PotParams(vase_profile="gourd", height=220,
+                            top_diameter=110, **base), "blush"),
+        ("wave, hexagonal", PotParams(vase_profile="wave", pot_style="hexagonal",
+                                      height=200, top_diameter=110, **base), "mustard"),
+    ]
+    mesh_grid([(label, build_pot(p), c) for label, p, c in cases],
+              out / "vases.png")
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -249,6 +268,7 @@ def main(outdir: str = "docs/img") -> None:
     extras_figure(out)
     colors_figure(out)
     nursery_figure(out)
+    vase_figure(out)
 
 
 if __name__ == "__main__":

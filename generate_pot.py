@@ -46,6 +46,17 @@ PARAMS = dict(
     wall_thickness=3.0,       # 2.4-3.2 mm is the sweet spot for a 0.4 mm nozzle
     base_thickness=5.0,       # floor under the soil; keep it above wall_thickness
 
+    # -- vase silhouette ------------------------------------------------------
+    vase_profile="none",      # "classic"|"bud"|"gourd"|"bottle"|"cone"|"wave":
+    #                           curvy vase walls; top_diameter = widest point
+    stem=False,               # hollow leafy stem rising from the floor - put
+    #                           a real flower in it (leaf tilt capped at 30)
+    stem_length=130.0,
+    stem_bore=9.0,
+    num_leaves=5,
+    leaf_length=55.0,
+    leaf_angle=25.0,
+
     # -- uniform scale --------------------------------------------------------
     scale=1.0,                # resize the pot's proportions; wall_thickness and
     #                           base_thickness stay exactly as set below

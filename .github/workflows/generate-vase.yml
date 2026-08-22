@@ -1,0 +1,76 @@
+# Actions -> "Generate · vase" -> Run workflow.
+# Curvy watertight vases: six silhouettes, any cross-section style, any
+# texture. top_diameter sizes the vase's WIDEST point; curves too steep
+# for the height are rejected with the height they need. The "stem"
+# option grows a hollow leafy stem from the floor - drop a real flower
+# in the bore and the vase reads as its extension.
+name: "Generate · vase"
+
+on:
+  workflow_dispatch:
+    inputs:
+      vase_profile:
+        description: "Silhouette"
+        type: choice
+        default: classic
+        options: [classic, bud, gourd, bottle, cone, wave]
+      pot_style:
+        description: "Cross-section / style"
+        type: choice
+        default: classic_tapered
+        options: [classic_tapered, ribbed_spiral, hexagonal, square, low_poly_faceted]
+      surface_texture:
+        description: "Surface texture"
+        type: choice
+        default: none
+        options: [none, herringbone, honeycomb, diamonds, waves]
+      height:
+        description: "Height in mm (curvier shapes want 1.8x the width or more)"
+        type: string
+        default: "220"
+      top_diameter:
+        description: "WIDEST diameter in mm"
+        type: string
+        default: "110"
+      stem:
+        description: "Grow a hollow leafy stem (the planted-flower look)"
+        type: boolean
+        default: false
+      stem_length:
+        description: "Stem rise above the rim in mm (with stem)"
+        type: string
+        default: "130"
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: sage
+      printer:
+        description: "Printer profile embedded in the .3mf"
+        type: choice
+        default: creality-k1-max
+        options: [creality-k1-max, creality-k1, creality-ender3-v3-ke, none]
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  vase:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Vase: ${{ inputs.vase_profile }}${{ inputs.stem && ' with stem' || '' }}"
+      artifact: "vase-${{ inputs.vase_profile }}"
+      cli_args: >-
+        --name vase_${{ inputs.vase_profile }}
+        --vase-profile ${{ inputs.vase_profile }}
+        --pot-style ${{ inputs.pot_style }}
+        --surface-texture ${{ inputs.surface_texture }}
+        --height ${{ inputs.height }}
+        --top-diameter ${{ inputs.top_diameter }}
+        --drainage-pattern none
+        --no-add-top-rim
+        ${{ inputs.stem && '--stem' || '' }}
+        --stem-length ${{ inputs.stem_length }}
+        --color ${{ inputs.color }}
+        --printer ${{ inputs.printer }}
+        ${{ inputs.extra_args }}
