@@ -1,0 +1,73 @@
+# Actions -> "Generate · bouquet planter" -> Run workflow.
+# A pot whose mouth is a cluster of blooms: the middle one flares open as
+# the planting well, and a ring of tulips or roses stands around it, each a
+# pocket that drains into the body. One piece, no supports.
+name: "Generate · bouquet planter"
+
+on:
+  workflow_dispatch:
+    inputs:
+      bouquet_flower:
+        description: "Bloom"
+        type: choice
+        default: tulip
+        options: [tulip, rose]
+      bouquet_count:
+        description: "Blooms in the ring (3-8)"
+        type: string
+        default: "5"
+      vase_profile:
+        description: "Silhouette (trumpet opens widest for the blooms)"
+        type: choice
+        default: bouquet
+        options: [bouquet, cone, classic, gourd]
+      height:
+        description: "Height in mm (the blooms add on top)"
+        type: string
+        default: "190"
+      top_diameter:
+        description: "WIDEST diameter in mm"
+        type: string
+        default: "115"
+      bouquet_head_diameter:
+        description: "Bloom size in mm (0 = size it from the pot)"
+        type: string
+        default: "0"
+      bouquet_tilt:
+        description: "How far the ring leans out, degrees (max 18)"
+        type: string
+        default: "15"
+      drainage_pattern:
+        description: "Drainage in the base"
+        type: choice
+        default: ring
+        options: [ring, grid, center, none]
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: blush
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  bouquet:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Bouquet planter: ${{ inputs.bouquet_count }} ${{ inputs.bouquet_flower }}s"
+      artifact: "bouquet-${{ inputs.bouquet_flower }}"
+      cli_args: >-
+        --name bouquet_${{ inputs.bouquet_flower }}
+        --bouquet
+        --bouquet-flower ${{ inputs.bouquet_flower }}
+        --bouquet-count ${{ inputs.bouquet_count }}
+        --bouquet-head-diameter ${{ inputs.bouquet_head_diameter }}
+        --bouquet-tilt ${{ inputs.bouquet_tilt }}
+        --vase-profile ${{ inputs.vase_profile }}
+        --height ${{ inputs.height }}
+        --top-diameter ${{ inputs.top_diameter }}
+        --drainage-pattern ${{ inputs.drainage_pattern }}
+        --no-add-top-rim
+        --color ${{ inputs.color }}
+        ${{ inputs.extra_args }}

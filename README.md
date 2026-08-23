@@ -75,6 +75,7 @@ pick the product — each has its own *Run workflow* form:
 | **Generate · hydroponic tower** | stackable column segments with angled plant ports + net cups |
 | **Generate · modular garden** | dovetail-connected seed trays, the flower set, the rotating stack |
 | **Generate · simple pot** | thin-walled nursery pots: shape, scale, wall, side + bottom drainage |
+| **Generate · bouquet planter** | a pot whose mouth is a ring of tulips or roses, each a planting pocket |
 | **Generate · vase** | six curvy silhouettes × any style × any texture, plus the planted stem (fused or screw-in) |
 
 Anything not on a form goes in *extra_args* exactly as you would type it on the CLI.
@@ -277,6 +278,49 @@ python -m flowerpot --vase-profile bud --stem --height 180 --top-diameter 120 \
     --drainage-pattern none --no-add-top-rim --color sage
 # the full planted-pot set: pot + socket, screw-in stem, raked-soil cap
 python -m flowerpot --stem --stem-mount screw --soil-cap --stem-length 90
+```
+
+## Bouquet planter
+
+![bouquet planter](docs/img/bouquet.png)
+
+`--bouquet` turns the pot's mouth into a cluster of blooms. The vessel gathers to
+a wide shoulder, the mouth itself flares open as a scalloped flower — that is the
+planting well — and a ring of `bouquet_count` (3-8) **tulips** or **roses** stands
+around it, each a hollow pocket for a succulent with a drain into the body below.
+One piece, one hollow, no supports, and the base drains like any other pot.
+
+Three things earn their keep in the geometry, and all three are about the same
+question — *does this surface face down?*
+
+* **The interior's ceiling.** Blooms need a solid shoulder to stand on, so the
+  cavity cones in (at ~52° from horizontal) to the mouth's throat rather than
+  running straight up to a rim. Every bloom foot is checked to sit on that
+  shoulder — outside the throat, inside the wall, and clear of the cone at the
+  depth it sinks to.
+* **Where two blooms overlap.** Two cups that are both still flaring meet in a
+  *valley*, and a valley drains to the sky: blooms may overlap freely down low,
+  which is exactly the gathered look. What is not allowed is one bloom's closing
+  top meeting its neighbour, because the pair roof the gap between them. The
+  layout walks both silhouettes and only demands clearance from the height where
+  one of them starts closing over.
+* **The rose's spiral.** Winding the petals as they rise adds
+  `radius x amplitude x petals x (dθ/dz)` of gradient — which grows with the cup's
+  radius and shrinks with its height, so it is the *widest shallow* cup that blows
+  the budget, not the tallest. The wind is capped against the same overhang budget
+  as everything else.
+
+Blooms are sized from the pot and shrink automatically until the ring fits; set
+`bouquet_head_diameter` to pick a size yourself. `bouquet_tilt` leans the ring
+outward (capped at 18° — the lean adds to each cup's own flare). Bouquet mode
+defaults to a **trumpet** silhouette that opens back out at the top, because the
+ring needs a wide shoulder; a narrow-necked vase like `bud` is rejected with the
+mouth width it would need.
+
+```bash
+python -m flowerpot --bouquet --color blush
+python -m flowerpot --bouquet --bouquet-flower rose --bouquet-count 7 \
+    --height 210 --top-diameter 130 --color clay
 ```
 
 ## Self-watering set
@@ -497,6 +541,10 @@ producing a broken mesh.
 (25.0; max 30 fused, max 60 with insert leaves), `leaf_mount` (`"printed"` fused |
 `"insert"` push-in leaf plate written as `<name>_leaves.*`), `soil_cap` (removable
 raked-soil lid, written as `<name>_soil_cap.*`).
+
+**Bouquet** — `bouquet`, `bouquet_flower` (`"tulip"` | `"rose"`),
+`bouquet_count` (5), `bouquet_head_diameter` (0.0 = auto), `bouquet_tilt`
+(15.0, max 18).
 
 **Self-watering** — `self_watering`, `reservoir_height` (35.0), `sw_wall_gap` (5.0),
 `refill_tube_bore` (16.0), `wick_hole_radius` (4.0), `num_wick_holes` (3).

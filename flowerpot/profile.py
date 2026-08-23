@@ -50,6 +50,11 @@ VASE_CURVES: dict[str, list[tuple[float, float]]] = {
     "bottle": [(0.0, 0.85), (0.32, 1.08), (0.52, 1.02), (0.80, 0.40),
                (0.90, 0.38), (1.0, 0.42)],
     "cone": [(0.0, 0.45), (1.0, 1.0)],
+    # a trumpet: pinched at the waist, opening back out to a broad mouth.
+    # The bouquet planter defaults to it - the ring of blooms needs a wide
+    # shoulder to stand on
+    "bouquet": [(0.0, 0.56), (0.30, 0.92), (0.55, 1.0), (0.78, 0.82),
+                (1.0, 0.95)],
     "wave": [(k / 32.0, 0.90 + 0.11 * math.sin(2.0 * math.pi * 3.5 * k / 32.0
                                                + 0.6))
              for k in range(33)],
@@ -60,11 +65,20 @@ for _name, _pts in VASE_CURVES.items():
     VASE_CURVES[_name] = [(a, b / _peak) for a, b in _pts]
 
 
+def effective_vase(p: PotParams) -> str:
+    """The silhouette actually used.  A bouquet planter needs a wide mouth
+    for its ring of blooms, so it picks the trumpet unless told otherwise."""
+    if p.vase_profile == "none" and p.bouquet:
+        return "bouquet"
+    return p.vase_profile
+
+
 def wall_radius(p: PotParams, z: float) -> float:
     """Nominal outside radius of the *wall* (rim and ribs excluded) at height z."""
     u = min(max(z / p.height, 0.0), 1.0)
-    if p.vase_profile != "none":
-        pts = VASE_CURVES[p.vase_profile]
+    curve = effective_vase(p)
+    if curve != "none":
+        pts = VASE_CURVES[curve]
         zs = [a for a, _ in pts]
         ws = [b for _, b in pts]
         w = ws[-1]
@@ -85,16 +99,17 @@ def check_vase_slope(p: PotParams) -> None:
     """A curve steeper than ~42 deg from vertical fails on BOTH surfaces (the
     outside where it widens, the inside where it narrows) - reject it with
     the height that would fix it."""
-    if p.vase_profile == "none":
+    curve = effective_vase(p)
+    if curve == "none":
         return
-    pts = VASE_CURVES[p.vase_profile]
+    pts = VASE_CURVES[curve]
     steepest = max(abs(b2 - b1) / max(a2 - a1, 1e-9)
                    for (a1, b1), (a2, b2) in zip(pts, pts[1:]))
     slope = steepest * p.top_radius / p.height
     if slope > 0.90:
         need = steepest * p.top_radius / 0.90
         raise ParameterError(
-            f"the {p.vase_profile!r} curve is too steep at height {p.height:.0f} "
+            f"the {curve!r} curve is too steep at height {p.height:.0f} "
             f"with a {p.top_diameter:.0f} mm mouth - use height >= {need:.0f} "
             f"or a narrower mouth"
         )
@@ -172,8 +187,8 @@ def build_profiles(p: PotParams) -> Profiles:
     # ---------------- outer wall + rim --------------------------------
     def follow_wall(z_to: float) -> None:
         """Trace the wall curve up to z_to (vases bend; lines don't)."""
-        if p.vase_profile != "none":
-            for zf, _ in VASE_CURVES[p.vase_profile]:
+        if effective_vase(p) != "none":
+            for zf, _ in VASE_CURVES[effective_vase(p)]:
                 z = zf * p.height
                 if 1e-6 < z < z_to - 1e-6:
                     outer.append((wall_radius(p, z), z))
@@ -236,14 +251,21 @@ def build_profiles(p: PotParams) -> Profiles:
     else:
         inner.append((r_floor_wall, floor_z))
 
-    if p.vase_profile != "none":
+    if effective_vase(p) != "none":
         # the cavity must follow the vase curve, breakpoint by breakpoint
-        for zf, _ in VASE_CURVES[p.vase_profile]:
+        for zf, _ in VASE_CURVES[effective_vase(p)]:
             z = zf * p.height
             if floor_z + chamfer + 1e-6 < z < p.height - 1e-6:
                 inner.append((cavity_radius(z), z))
 
-    if p.jar_greenhouse:
+    if p.bouquet:
+        # the cavity closes under the gather, leaving a solid plug for the
+        # blooms to stand on - see flowerpot.bouquet
+        from .bouquet import cavity_cap_rings, check_bouquet_fit
+        check_bouquet_fit(p)
+        tail = cavity_cap_rings(p, cavity_radius)
+        inner = [ring for ring in inner if ring[1] < tail[0][1] - 1e-6] + tail
+    elif p.jar_greenhouse:
         from .jar import check_jar_fit, neck_rings
         # polygonal pots: the round jar seat must fit inside the FLATS
         fmin = math.cos(math.pi / p.sides) if p.sides > 1 else 1.0
