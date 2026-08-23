@@ -7,10 +7,13 @@ import math
 import pytest
 
 from flowerpot import ParameterError, PotParams, audit, build_pot
-from flowerpot.bouquet import (_CONE_RISE, _SHAPES, _closing_fraction,
-                               _profile_radius, center_ring, gather_radius,
-                               head_placements, plan, throat_radius)
-from flowerpot.profile import build_profiles, effective_vase
+from flowerpot import bouquet as bq
+from flowerpot.bouquet import (_CONE_RISE, _SHAPES, cavity_cone,
+                               chamber_bounds, chamber_span_at,
+                               _closing_fraction, _profile_radius, center_ring,
+                               gather_radius, head_placements, plan,
+                               shoulder_chamber, throat_radius)
+from flowerpot.profile import build_profiles, effective_vase, wall_radius
 
 FAST = dict(segments=96, vertical_step=2.5)
 BQ = dict(bouquet=True, height=190, top_diameter=115, drainage_pattern="none",
@@ -121,3 +124,86 @@ def test_bouquet_guardrails():
         PotParams(bouquet=True, stem=True).validate()
     with pytest.raises(ParameterError):
         PotParams(bouquet=True, jar_greenhouse=True).validate()
+
+
+# ---------------------------------------------------------------------------
+# the hollow shoulder
+# ---------------------------------------------------------------------------
+def _walk_chamber(ch, n=120):
+    for i in range(n + 1):
+        z = ch["z_lo"] + (ch["z_hi"] - ch["z_lo"]) * i / n
+        yield (z,) + chamber_bounds(ch, z)
+
+
+def test_the_shoulder_is_hollowed_out(monkeypatch):
+    """The band between the cavity's cone and the deck is the heaviest thing
+    in the model and most of it does nothing.  Carving it must not change
+    what the pot *is*: one piece, same plumbing, same overhangs."""
+    p = PotParams(**BQ)
+    hollow = build_pot(p)
+    monkeypatch.setattr(bq, "shoulder_chamber", lambda _p: None)
+    solid = build_pot(p)
+
+    assert hollow.volume < 0.94 * solid.volume
+    assert hollow.is_watertight
+    assert len(hollow.split(only_watertight=False)) == 1     # nothing sealed off
+    assert hollow.euler_number == solid.euler_number         # same handles
+    assert audit(hollow, p.overhang_limit_deg).overhang_faces == 0
+
+
+def test_the_chamber_keeps_a_deck_a_skin_and_a_wall():
+    p = PotParams(**BQ)
+    ch = shoulder_chamber(p)
+    assert ch is not None
+    r0, z0, throat, z_top = cavity_cone(p)
+    assert ch["z_apex"] <= z_top - 4.0                       # deck for the blooms
+    slant = math.hypot(1.0, 1.0 / _CONE_RISE)
+    for z, ri, ro in _walk_chamber(ch):
+        cone = r0 + (throat - r0) * (z - z0) / (z_top - z0)
+        # a real perpendicular skin over the cavity's ceiling ...
+        assert (ri - cone) / slant >= p.wall_thickness - 1e-6
+        # ... and a real wall outside it
+        assert ro <= wall_radius(p, z) - p.wall_thickness + 1e-6
+
+
+def test_the_chamber_roof_is_a_tent_and_prints():
+    """A void is roofed by whichever of its faces leans inward as it rises.
+    Both of the chamber's do, and neither may run out faster than the
+    overhang budget - that is the whole reason it is a tent and not a box."""
+    p = PotParams(**BQ)
+    ch = shoulder_chamber(p)
+    lim = math.tan(math.radians(p.overhang_limit_deg))
+    walk = list(_walk_chamber(ch))
+    for (z0, ri0, ro0), (z1, ri1, ro1) in zip(walk, walk[1:]):
+        dz = z1 - z0
+        assert ri1 - ri0 <= lim * dz + 1e-9        # inner face closing in
+        assert ro0 - ro1 <= lim * dz + 1e-9        # outer face closing in
+
+
+def test_every_pocket_is_emptied_by_the_bloom_above_it():
+    """The ring is cut into one pocket per bloom and each bloom's drain
+    passes straight through its own - which is what keeps the pockets from
+    being sealed voids, and the handle count from moving."""
+    p = PotParams(**BQ)
+    ch = shoulder_chamber(p)
+    span = chamber_span_at(ch, plan(p)["r_base"])
+    assert span is not None and span[1] - span[0] >= 3.0
+
+
+def test_a_tiny_bouquet_is_left_solid():
+    """Below a certain size there is no shoulder worth carving, and a void
+    the slicer would simply fill back in is worse than none."""
+    p = PotParams(**{**BQ, "height": 80, "top_diameter": 70})
+    assert shoulder_chamber(p) is None
+
+
+@pytest.mark.parametrize("extra", [dict(vase_profile="classic"),
+                                   dict(bouquet_head_diameter=54.0)])
+def test_a_bloom_leaning_in_over_the_mouth_is_not_roofed(extra):
+    """The collar's cavity cutter overshoots the collar's rim so the mouth
+    opens - and used to end in a flat disc, which roofed whatever it landed
+    inside.  A ring bloom leaning inward is exactly that."""
+    p = PotParams(**{**BQ, "bouquet_flower": "rose", "top_diameter": 120,
+                     **extra})
+    report = audit(build_pot(p), p.overhang_limit_deg)
+    assert report.overhang_faces == 0, report

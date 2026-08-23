@@ -309,6 +309,19 @@ question — *does this surface face down?*
   radius and shrinks with its height, so it is the *widest shallow* cup that blows
   the budget, not the tallest. The wind is capped against the same overhang budget
   as everything else.
+* **The hollow inside the shoulder.** That solid shoulder is the heaviest thing
+  in the model — a third of it, in a band a few centimetres tall — and most of it
+  carries nothing. It is carved out from the inside, which a flat-roofed void
+  cannot be: the deck over it would be a horizontal ceiling. So the void is a
+  *tent*, an annular chamber whose roof rises to a ridge from both sides at the
+  same 38° the rest of the model is held to, one deck below the top and one wall
+  thickness above the cone. Radial ribs at the midpoints between blooms cut the
+  ring into one pocket per bloom, and that bloom's own drain runs straight through
+  its pocket on the way to the body — so each pocket empties, the ribs carry the
+  deck where the blooms actually stand, and the pot stays one piece with exactly
+  the tunnels it had before. It takes **8-15% off the whole model**, more on the
+  big ones, and needs no parameter: the ridge radius is swept and measured, not
+  guessed, and a pot too small to carve is simply left solid.
 
 Blooms are sized from the pot and shrink automatically until the ring fits; set
 `bouquet_head_diameter` to pick a size yourself. `bouquet_tilt` leans the ring

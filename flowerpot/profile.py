@@ -177,6 +177,20 @@ def _solve_chamfer_start(p: PotParams, rim_radius: float, rim_bottom_z: float) -
     return 0.5 * (lo + hi)
 
 
+def wall_cavity_radius(p: PotParams, z: float) -> float:
+    """Wall radius pulled in by a true perpendicular wall thickness.
+
+    This is where the inside of the wall sits at height ``z`` - the cavity
+    follows it until something (the bouquet's gather, a jar neck) takes over.
+    """
+    section_factor = 1.0
+    if p.pot_style in ("hexagonal", "low_poly_faceted"):
+        section_factor = 1.0 / math.cos(math.pi / p.sides)
+    slope = wall_slope(p, z)
+    horiz = p.wall_thickness * math.sqrt(1.0 + slope * slope) * section_factor
+    return wall_radius(p, z) - horiz
+
+
 def build_profiles(p: PotParams) -> Profiles:
     """Turn the parameters into the outer and inner lathe polylines."""
     check_vase_slope(p)
@@ -221,15 +235,8 @@ def build_profiles(p: PotParams) -> Profiles:
         widest = max(r for r, _ in outer)
 
     # ---------------- inner cavity ------------------------------------
-    section_factor = 1.0
-    if p.pot_style in ("hexagonal", "low_poly_faceted"):
-        section_factor = 1.0 / math.cos(math.pi / p.sides)
-
     def cavity_radius(z: float) -> float:
-        """Wall radius pulled in by a true perpendicular wall thickness."""
-        slope = wall_slope(p, z)
-        horiz = p.wall_thickness * math.sqrt(1.0 + slope * slope) * section_factor
-        return wall_radius(p, z) - horiz
+        return wall_cavity_radius(p, z)
 
     floor_z = p.base_thickness
     r_floor_wall = cavity_radius(floor_z)
@@ -263,7 +270,7 @@ def build_profiles(p: PotParams) -> Profiles:
         # blooms to stand on - see flowerpot.bouquet
         from .bouquet import cavity_cap_rings, check_bouquet_fit
         check_bouquet_fit(p)
-        tail = cavity_cap_rings(p, cavity_radius)
+        tail = cavity_cap_rings(p)
         inner = [ring for ring in inner if ring[1] < tail[0][1] - 1e-6] + tail
     elif p.jar_greenhouse:
         from .jar import check_jar_fit, neck_rings
