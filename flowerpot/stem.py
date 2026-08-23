@@ -13,7 +13,10 @@ male stub.  The thread is a coarse printable profile (5 mm pitch, 1.1 mm
 deep, flanks at 49 degrees from horizontal so BOTH the external and the
 internal thread stay inside the overhang budget), with lead-in tapers
 and 0.3 mm of clearance.  Unscrew to clean, or print a stem taller than
-the vessel.
+the vessel.  A screw-in stem taller than the printer is split again into
+sections joined by threaded *nodes* - bamboo-like swellings, because the
+shaft is barely thicker than its own bore and a thread needs somewhere to
+live.  Nodes only ever land above the rim, where the bore is dry.
 
 ``soil_cap`` adds the potted-plant illusion: a removable disc that seats
 into the vessel's taper just below the rim, its top sculpted like raked
@@ -62,6 +65,19 @@ _STEM_R_TIP = 6.0
 _BRANCH_TIP_R = 4.5
 _BRANCH_BORE_R = 2.8
 
+# mid-stem joint: a swollen node, like the node of a bamboo cane, with room
+# in its wall for a thread.  The shaft itself is far too slim to hide one -
+# it is barely thicker than the bore - so the joint has to stand proud.
+# the joint reuses the vessel thread's proven profile: the flank angle is
+# depth/(pitch/4), and at 4.0/1.0 that is exactly 45 deg - dead on the limit.
+# Only the core radius shrinks, which the flank angle does not depend on.
+_NODE_PITCH = _PITCH
+_NODE_DEPTH = _THREAD_DEPTH
+_NODE_CLEAR = 0.3
+_NODE_ENGAGE = 9.0          # thread engagement, and how far the stub hangs
+_NODE_WALL = 2.2
+_NODE_FLARE = 6.0           # height the bulge takes to swell out of the shaft
+
 # insert-leaf joint: a vertical slot with a gable roof (printable in the
 # standing stem) takes a flat rectangular tab on the leaf (printable lying
 # down).  One slot shape fits every leaf; flip the leaf to make it droop.
@@ -81,15 +97,16 @@ class _ThreadSection(Section):
     axially (used on the female cutter for clearance)."""
 
     def __init__(self, params, depth: float, z0: float, z1: float,
-                 widen: float = 0.0):
+                 widen: float = 0.0, pitch: float = _PITCH):
         super().__init__(params)
         self.depth, self.z0, self.z1, self.widen = depth, z0, z1, widen
+        self.pitch = pitch
 
     def _theta_count(self) -> int:
         return 96
 
     def _shape_radius(self, theta, z, r, decorate):
-        t = z / _PITCH - theta / (2.0 * math.pi)
+        t = z / self.pitch - theta / (2.0 * math.pi)
         f = np.mod(t, 1.0)
         d = np.minimum(f, 1.0 - f)                     # distance to crest
         crest = 0.125 + self.widen
@@ -103,11 +120,112 @@ class _ThreadSection(Section):
 
 
 def _thread_mesh(p: PotParams, r_core: float, z0: float, z1: float,
-                 widen: float = 0.0) -> trimesh.Trimesh:
-    sec = _ThreadSection(p.with_(surface_texture="none"), _THREAD_DEPTH,
-                         z0 + 0.2, z1 - 0.2, widen)
-    return lathe(resample([(r_core, z0), (r_core, z1)], _PITCH / 10.0),
+                 widen: float = 0.0, depth: float = _THREAD_DEPTH,
+                 pitch: float = _PITCH) -> trimesh.Trimesh:
+    sec = _ThreadSection(p.with_(surface_texture="none"), depth,
+                         z0 + 0.2, z1 - 0.2, widen, pitch)
+    return lathe(resample([(r_core, z0), (r_core, z1)], pitch / 10.0),
                  sec, decorate=False)
+
+
+# ---------------------------------------------------------------------------
+# splitting a tall stem into printable sections
+# ---------------------------------------------------------------------------
+def node_core_radius(p: PotParams, r_shaft: float = 0.0) -> float:
+    """Male core radius of a mid-stem joint.
+
+    Two things have to fit through it.  The bore runs straight past - the
+    flower stem and its water have to pass - so the core clears it with a
+    wall left over.  And the socket's root has to be wider than the shaft
+    that drops into it, or the shaft lands on the node's mouth instead of
+    the threads taking the load.
+    """
+    return max(6.0, p.stem_bore / 2.0 + 1.6, r_shaft + 0.15)
+
+
+def node_radius(p: PotParams, r_shaft: float = 0.0) -> float:
+    """Outside radius of the node bulge that houses the female thread."""
+    return (node_core_radius(p, r_shaft)
+            + _NODE_CLEAR + _NODE_DEPTH + _NODE_WALL)
+
+
+def _bed_height(p: PotParams) -> float | None:
+    if p.printer == "none":
+        return None
+    from .printers import PRINTERS
+    return float(PRINTERS[p.printer]["height"])
+
+
+def _clear_of(z: float, spans, margin: float = 3.0) -> bool:
+    return all(not (lo - margin < z < hi + margin) for lo, hi in spans)
+
+
+def _section_height(z_lo: float, z_hi: float, first: bool, reaches) -> float:
+    """How tall the section actually prints.
+
+    Not simply ``z_hi - z_lo``: section 0 reaches down to the vessel stub at
+    z = 0, a later one hangs its own stub below z_lo, and in either case a
+    leaf or branch attached inside the section can stand well above its top.
+    """
+    bottom = 0.0 if first else z_lo - _NODE_ENGAGE
+    top = max([z_hi] + [reach for z_att, reach in reaches
+                        if z_lo <= z_att < z_hi])
+    return top - bottom
+
+
+def stem_splits(p: PotParams, lay: "_Layout") -> list[float]:
+    """Heights (piece frame) at which to put a threaded node.
+
+    Three constraints shape the answer.  No section may print taller than
+    the bed.  No node may sit below the rim - down there the bore is full
+    of water, and a threaded joint is exactly where it would weep.  And no
+    node may land in a leaf or a branch, because a feature split across two
+    pieces would leave a fragment floating beside the shaft.
+
+    Each node is placed as high as those allow, so the sections come out as
+    few and as full as possible.
+    """
+    if p.stem_mount != "screw" or p.stem_split == "never":
+        return []
+    bed = _bed_height(p)
+    limit = (bed - 5.0) if bed else None        # gantry / fan clearance
+    floor = max(lay.z_f2 + 25.0, lay.z_rim + 8.0)      # first dry height
+    ceiling = lay.top - 25.0
+    if ceiling <= floor:
+        return []
+    spans = _feature_spans(p, lay)
+    reaches = _feature_reaches(p, lay)
+
+    def fits(z_lo, z_hi, first):
+        return (limit is None
+                or _section_height(z_lo, z_hi, first, reaches) <= limit)
+
+    nodes: list[float] = []
+    if p.stem_split == "always" and fits(lay.z_f2, lay.top, True):
+        for step in range(0, 401):              # one node, near the middle
+            z = 0.5 * (floor + ceiling) - step * 0.25
+            if z < floor:
+                break
+            if _clear_of(z, spans):
+                return [z]
+        return []
+
+    while True:
+        z_lo = nodes[-1] if nodes else lay.z_f2
+        first = not nodes
+        if fits(z_lo, lay.top, first):
+            break
+        best = None
+        z = ceiling
+        while z >= max(floor, z_lo + 25.0):     # highest cut that works
+            if _clear_of(z, spans) and fits(z_lo, z, first):
+                best = z
+                break
+            z -= 0.25
+        if best is None:
+            break        # cannot split further; the bed warning will say so
+        nodes.append(best)
+    return nodes
 
 
 def _tube(path, radii, nt: int = 48) -> trimesh.Trimesh:
@@ -199,13 +317,16 @@ def branch_leaf_length(p: PotParams, top: float, z_att: float, climb: float
     return length if length >= 12.0 else None
 
 
-def _branches(p: PotParams, z_rim: float, top: float, r_fn, cl
+def _branches(p: PotParams, z_rim: float, top: float, r_fn, cl,
+              z_lo: float = -1e9, z_hi: float = 1e9
               ) -> tuple[list[trimesh.Trimesh], list[trimesh.Trimesh]]:
     """Side stems curving off the main one: they leave at ~35 degrees off
     vertical (printable), ease upright, and end in an open bore of their
     own that connects to the main water column - one flower per branch."""
     solids, cutters = [], []
     for z_att, climb, azim in planned_branches(p, z_rim, top):
+        if not z_lo <= z_att < z_hi:      # belongs to another section
+            continue
         reach = 0.40 * climb          # base slope 0.63 -> 32 deg + sway
         rb0 = min(5.4, 0.8 * r_fn(z_att))
         steps = max(8, int(climb / 2.5))
@@ -278,42 +399,60 @@ def _leaf(length: float, width: float, thickness: float) -> trimesh.Trimesh:
 def _leaf_sites(p: PotParams, z_rim: float, z_top: float
                 ) -> list[tuple[float, float, float, float]]:
     """(z_attach, length, azimuth, tilt_deg) per main-stem leaf - shared by
-    the fused leaves, the insert slots and the leaf plate.  A leaf whose
-    sector a branch climbs through is swung aside: fused it would merely
-    merge into the branch, but an insert leaf has to actually fit."""
+    the fused leaves, the insert slots and the leaf plate.
+
+    A leaf whose sector a branch climbs through is swung aside: fused it
+    would merely merge into the branch, but an insert leaf has to actually
+    fit.  Swinging it has to clear the other *leaves* too - two blades on
+    the same bearing weld into each other, which closes a loop through the
+    shaft and quietly adds a handle to the model.
+    """
     branches = planned_branches(p, z_rim, z_top)
 
-    def clashes(azim: float, z_att: float, length: float) -> bool:
+    def _gap(a: float, b: float) -> float:
+        return abs((a - b + math.pi) % (2.0 * math.pi) - math.pi)
+
+    def clashes(azim: float, z_att: float, length: float, placed) -> bool:
         for zb, climb, ab in branches:
-            gap = (azim - ab + math.pi) % (2.0 * math.pi) - math.pi
-            if abs(gap) < 0.6 and z_att < zb + climb \
+            if _gap(azim, ab) < 0.95 and z_att < zb + climb \
                     and z_att + 0.8 * length > zb + 4.0:
+                return True
+        for z0, a0, l0 in placed:
+            if _gap(azim, a0) < 0.55 \
+                    and abs(z_att - z0) < 0.8 * max(length, l0):
                 return True
         return False
 
     sites = []
     n = max(1, int(p.num_leaves))
-    z_lo = z_rim + 14.0
-    z_hi = z_top - p.leaf_length * 0.75
+    # the first leaf starts a little clear of the rim: that gap is where a
+    # mid-stem node lands on a tall stem, and it is the natural place for
+    # one anyway - right where the stem emerges from the pot
+    z_lo = z_rim + 20.0
+    z_hi = max(z_lo, z_top - p.leaf_length * 0.75)
     cap = 60.0 if p.leaf_mount == "insert" else 30.0
+    placed: list[tuple[float, float, float]] = []
     for k in range(n):
         frac = k / max(1, n - 1) if n > 1 else 0.5
         z_att = z_lo + (z_hi - z_lo) * frac
         length = p.leaf_length * (1.0 - 0.35 * frac)
         azim = k * _GOLDEN
-        for _ in range(3):
-            if not clashes(azim, z_att, length):
+        for _ in range(4):
+            if not clashes(azim, z_att, length, placed):
                 break
-            azim += 1.2
+            azim += 1.15          # not a multiple of the golden angle
+        placed.append((z_att, azim, length))
         sites.append((z_att, length, azim,
                       min(p.leaf_angle + 4.0 * math.sin(2.1 * k), cap)))
     return sites
 
 
-def _leaves(p: PotParams, z_rim: float, z_top: float, r_tip: float, cl
-            ) -> list[trimesh.Trimesh]:
+def _leaves(p: PotParams, z_rim: float, z_top: float, r_tip: float, cl,
+            z_lo: float = -1e9, z_hi: float = 1e9) -> list[trimesh.Trimesh]:
     out = []
     for z_att, length, azim, tilt in _leaf_sites(p, z_rim, z_top):
+        if not z_lo <= z_att < z_hi:      # belongs to another section
+            continue
         leaf = _leaf(length, length * 0.34, max(3.0, length * 0.075))
         leaf.apply_translation((0, 0, length * 0.42))
         leaf.apply_transform(trimesh.transformations.rotation_matrix(
@@ -344,10 +483,13 @@ def _place_slot(slot: trimesh.Trimesh, azim: float,
     return slot
 
 
-def _leaf_slots(p: PotParams, z_rim: float, z_top: float, r_fn, cl
+def _leaf_slots(p: PotParams, z_rim: float, z_top: float, r_fn, cl,
+                z_lo: float = -1e9, z_hi: float = 1e9
                 ) -> list[trimesh.Trimesh]:
     out = []
     for z_att, _length, azim, _tilt in _leaf_sites(p, z_rim, z_top):
+        if not z_lo <= z_att < z_hi:
+            continue
         cx, cy = cl(z_att)
         out.append(_place_slot(_slot(r_fn(z_att) + 3.0, _SLOT_HALF_H),
                                azim, cx, cy, z_att))
@@ -405,48 +547,151 @@ def socket_parts(p: PotParams, floor_top_z: float
     return [boss], [cutter]
 
 
-def build_stem_piece(p: PotParams, floor_top_z: float) -> trimesh.Trimesh:
-    """The separate screw-in stem, exported standing on its threaded stub."""
-    # the flange is a cone rising at ~41 deg from the stub core out to
-    # _FLANGE_R: printable upside up (the piece prints standing on the stub)
-    # and, screwed home, it self-centres on the socket's top edge
-    rise = 1.15
-    z_f0 = _STUB_H - 1.0
-    z_f1 = z_f0 + (_FLANGE_R - _CORE_R) * rise
-    z_f2 = z_f1 + 1.5                              # grip band
-    z_neck = z_f2 + (_FLANGE_R - _STEM_R_BASE)     # 45 deg taper to the shaft
+class _Layout:
+    """Heights of the screw-in stem in the PIECE frame (stub base at z=0)."""
 
-    # heights in the PIECE frame: stub base at z=0; screwed home, the cone
-    # meets the socket rim (bore radius _CORE_R + _THREAD_CLEAR) at piece
-    # z = z_f0 + _THREAD_CLEAR*rise, which lands at vessel
-    # z = floor_top_z + _SOCKET_H
-    z_seat = z_f0 + _THREAD_CLEAR * rise
-    z_rim = z_seat + (p.height - (floor_top_z + _SOCKET_H))
-    top = z_rim + p.stem_length
+    def __init__(self, p: PotParams, floor_top_z: float):
+        # the flange is a cone rising at ~41 deg from the stub core out to
+        # _FLANGE_R: printable upside up (the piece prints standing on the
+        # stub) and, screwed home, it self-centres on the socket's top edge
+        rise = 1.15
+        self.z_f0 = _STUB_H - 1.0
+        self.z_f1 = self.z_f0 + (_FLANGE_R - _CORE_R) * rise
+        self.z_f2 = self.z_f1 + 1.5                     # grip band
+        self.z_neck = self.z_f2 + (_FLANGE_R - _STEM_R_BASE)   # 45 deg taper
+        # screwed home, the cone meets the socket rim (bore radius
+        # _CORE_R + _THREAD_CLEAR) at piece z = z_f0 + _THREAD_CLEAR * rise,
+        # which lands at vessel z = floor_top_z + _SOCKET_H
+        self.z_seat = self.z_f0 + _THREAD_CLEAR * rise
+        self.z_rim = self.z_seat + (p.height - (floor_top_z + _SOCKET_H))
+        self.top = self.z_rim + p.stem_length
+        self.r_fn = _taper(_STEM_R_BASE, self.z_f2, _STEM_R_TIP, self.top)
+        self.cl = _centerline(p, self.z_rim, self.top)
 
+
+def _feature_spans(p: PotParams, lay: "_Layout") -> list[tuple[float, float]]:
+    """Height ranges a node must not land in, one per leaf and branch."""
+    spans = []
+    for z_att, length, _azim, _tilt in _leaf_sites(p, lay.z_rim, lay.top):
+        # an insert leaf is a separate part - only its slot is in the way
+        spans.append((z_att - 5.0, z_att + 5.0) if p.leaf_mount == "insert"
+                     else (z_att - 2.0, z_att + 0.9 * length))
+    for z_att, climb, _azim in planned_branches(p, lay.z_rim, lay.top):
+        spans.append((z_att - 2.0, z_att + climb + 4.0))
+    return spans
+
+
+def _feature_reaches(p: PotParams, lay: "_Layout"
+                     ) -> list[tuple[float, float]]:
+    """(z_attach, how high it stands) per leaf and branch."""
+    out = []
+    for z_att, length, _azim, _tilt in _leaf_sites(p, lay.z_rim, lay.top):
+        out.append((z_att, z_att + (6.0 if p.leaf_mount == "insert"
+                                    else 0.95 * length)))
+    for z_att, climb, _azim in planned_branches(p, lay.z_rim, lay.top):
+        reach = z_att + climb
+        leaf = branch_leaf_length(p, lay.top, z_att, climb)
+        if leaf is not None and p.leaf_mount != "insert":
+            reach = max(reach, z_att + 0.5 * climb + 0.95 * leaf)
+        out.append((z_att, reach))
+    return out
+
+
+def stem_section_bounds(p: PotParams, floor_top_z: float
+                        ) -> list[tuple[float, float]]:
+    """(z_lo, z_hi) of each printed stem section, in the piece frame."""
+    lay = _Layout(p, floor_top_z)
+    edges = [lay.z_f2] + stem_splits(p, lay) + [lay.top]
+    return list(zip(edges, edges[1:]))
+
+
+def stem_piece_count(p: PotParams, floor_top_z: float) -> int:
+    return len(stem_section_bounds(p, floor_top_z))
+
+
+def build_stem_piece(p: PotParams, floor_top_z: float,
+                     index: int = 0) -> trimesh.Trimesh:
+    """One printed section of the screw-in stem, standing on its stub.
+
+    Section 0 carries the threaded stub and flange that screw into the
+    vessel; every later section starts with a smaller male stub that screws
+    into the node on top of the section below it.
+    """
+    lay = _Layout(p, floor_top_z)
+    bounds = stem_section_bounds(p, floor_top_z)
+    z_lo, z_hi = bounds[index]
+    first, last = index == 0, index == len(bounds) - 1
+    r_fn, cl = lay.r_fn, lay.cl
     section = _round(p)
-    cl = _centerline(p, z_rim, top)
-    r_fn = _taper(_STEM_R_BASE, z_f2, _STEM_R_TIP, top)
-    stub = _thread_mesh(p, _CORE_R, 0.0, _STUB_H + 0.5)
-    flange = lathe(resample([(_CORE_R, z_f0),
-                             (_FLANGE_R, z_f1),
-                             (_FLANGE_R, z_f2),
-                             (_STEM_R_BASE, z_neck)], 2.0),
-                   section, False)
-    shaft = _shaft_tube(p, z_f2, top, r_fn, cl)
-    bore = _shaft_tube(p, _STUB_H + 2.0, top + 2.0,
-                       lambda z: p.stem_bore / 2.0, cl)
-    b_solids, b_cutters = _branches(p, z_rim, top, r_fn, cl)
 
-    solids = [stub, flange, shaft] + b_solids
-    cutters = [bore] + b_cutters + _water_holes(p, z_neck + 6.0, z_rim - 10.0)
-    if p.leaf_mount == "insert":
-        cutters += _leaf_slots(p, z_rim, top, r_fn, cl)
+    solids: list[trimesh.Trimesh] = []
+    cutters: list[trimesh.Trimesh] = []
+
+    if first:
+        solids.append(_thread_mesh(p, _CORE_R, 0.0, _STUB_H + 0.5))
+        solids.append(lathe(resample([(_CORE_R, lay.z_f0),
+                                      (_FLANGE_R, lay.z_f1),
+                                      (_FLANGE_R, lay.z_f2),
+                                      (_STEM_R_BASE, lay.z_neck)], 2.0),
+                            section, False))
+        bore_lo = _STUB_H + 2.0
+        cutters += _water_holes(p, lay.z_neck + 6.0, lay.z_rim - 10.0)
     else:
-        solids += _leaves(p, z_rim, top, _STEM_R_TIP, cl)
+        # male stub hanging below the shaft, screwing into the node beneath
+        core = node_core_radius(p, r_fn(z_lo))
+        stub = _thread_mesh(p, core, z_lo - _NODE_ENGAGE, z_lo + 0.5,
+                            depth=_NODE_DEPTH, pitch=_NODE_PITCH)
+        stub.apply_translation((*cl(z_lo), 0.0))     # ride the stem's sway
+        solids.append(stub)
+        # ... and a cone easing the stub out to the shaft, so the shaft's
+        # underside is not left hanging over the thread roots.  It starts
+        # strictly *inside* the stub core: flush with it, the two surfaces
+        # only graze and leave slivers of downward-facing rim behind.
+        base = core - 0.8
+        lead = max(2.5, (r_fn(z_lo) - base) * 1.3)
+        solids.append(_shaft_tube(
+            p, z_lo - lead, z_lo,
+            lambda z, zl=z_lo, ld=lead, b=base: b + (r_fn(zl) - b)
+            * min(1.0, max(0.0, (z - (zl - ld)) / ld)), cl, step=0.75))
+        bore_lo = z_lo - _NODE_ENGAGE - 2.0
+
+    solids.append(_shaft_tube(p, z_lo, z_hi, r_fn, cl))
+
+    if not last:
+        # the node: a bamboo-like swelling with the female thread inside it
+        node_r = node_radius(p, r_fn(z_hi))
+        z_flare = z_hi - _NODE_ENGAGE - _NODE_FLARE
+        solids.append(_shaft_tube(
+            p, z_flare, z_hi,
+            lambda z, zf=z_flare, zh=z_hi, nr=node_r: max(
+                r_fn(z), r_fn(zf) + (nr - r_fn(zf))
+                * min(1.0, (z - zf) / _NODE_FLARE)), cl, step=1.0))
+        socket = _thread_mesh(
+            p, node_core_radius(p, r_fn(z_hi)) + _NODE_CLEAR,
+            z_hi - _NODE_ENGAGE,
+            z_hi + 2.0, widen=0.075, depth=_NODE_DEPTH, pitch=_NODE_PITCH)
+        # the same offset the mating stub uses, so the two still line up
+        socket.apply_translation((*cl(z_hi), 0.0))
+        cutters.append(socket)
+
+    cutters.append(_shaft_tube(p, bore_lo, z_hi + 2.0,
+                               lambda z: p.stem_bore / 2.0, cl))
+
+    b_solids, b_cutters = _branches(p, lay.z_rim, lay.top, r_fn, cl,
+                                    z_lo, z_hi)
+    solids += b_solids
+    cutters += b_cutters
+    if p.leaf_mount == "insert":
+        cutters += _leaf_slots(p, lay.z_rim, lay.top, r_fn, cl, z_lo, z_hi)
+    else:
+        solids += _leaves(p, lay.z_rim, lay.top, _STEM_R_TIP, cl, z_lo, z_hi)
+
     piece = _boolean("union", solids)
     piece = _boolean("difference", [piece] + cutters)
-    return _finish(piece, center=False)
+    piece = _finish(piece, center=False)
+    if not first:            # print it standing on its stub
+        piece.apply_translation((0.0, 0.0, -piece.bounds[0][2]))
+    return piece
 
 
 def build_soil_cap(p: PotParams) -> trimesh.Trimesh:

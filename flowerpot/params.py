@@ -203,6 +203,11 @@ class PotParams:
     #                                  the rim and looks like raked soil, with
     #                                  a hole for the stem and two finger /
     #                                  watering holes.  The planted-plant look.
+    stem_split: str = "auto"         # a screw-in stem taller than the bed is
+    #                                  printed in sections joined by threaded
+    #                                  nodes: "auto" splits only when it must,
+    #                                  "never" keeps one piece (and warns),
+    #                                  "always" forces a node in every stem
     stem_curve: float = 6.0          # gentle lean (mm of sway) of the stem
     #                                  above the rim; 0 = perfectly straight.
     #                                  Below the rim the stem stays coaxial so
@@ -353,6 +358,9 @@ class PotParams:
             )
         if self.leaf_mount not in ("printed", "insert"):
             raise ParameterError('leaf_mount must be "printed" or "insert"')
+        if self.stem_split not in ("auto", "never", "always"):
+            raise ParameterError(
+                'stem_split must be "auto", "never" or "always"')
         if self.stem:
             max_leaf = 60.0 if self.leaf_mount == "insert" else 30.0
             if not 10.0 <= self.leaf_angle <= max_leaf:

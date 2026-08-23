@@ -236,6 +236,20 @@ matching threaded stub (coarse 5 mm-pitch thread, flanks and run-outs all inside
 vase properly, or print a stem *taller* than the vessel. Drainage holes that would
 land under the socket are dropped automatically.
 
+![split stem](docs/img/stem_split.png)
+
+A screw-in stem can easily out-grow the printer — a 220 mm vase with a 130 mm stem
+makes a 341 mm part — so it splits again at threaded **nodes**, and the pieces are
+written as `<name>_stem_part1`, `part2`, … Each node is a bamboo-like swelling,
+because the shaft is barely thicker than its own bore and the thread needs somewhere
+to live. Nodes are placed as high as three rules allow: no section taller than the
+bed, none below the rim (a joint down there sits in the water and would weep), and
+never inside a leaf or branch, which would leave a fragment floating beside the
+shaft. Screwed together the stem is identical to the one-piece version.
+`stem_split` is `"auto"` by default — `"never"` keeps one tall piece (you still get
+the bed warning), `"always"` forces a node, which is handy for shipping or storage.
+The upper sections stand on a small stub, so slice them with a brim.
+
 **`--soil-cap`** completes the potted-plant illusion: a removable lid written as
 `<name>_soil_cap.*` that rests in the pot's taper just below the rim, sculpted like
 raked soil (every bump faces up, so it prints flat with zero supports), with a
@@ -477,7 +491,8 @@ producing a broken mesh.
 
 **Vase** — `vase_profile` (`"none"`). **Stem** — `stem`, `stem_mount`
 (`"printed"` fused | `"screw"` separate threaded piece), `stem_length` (130.0),
-`stem_bore` (9.0), `stem_curve` (6.0 mm of sway, 0 = straight), `num_branches` (2),
+`stem_bore` (9.0), `stem_split` (`"auto"` | `"never"` | `"always"`),
+`stem_curve` (6.0 mm of sway, 0 = straight), `num_branches` (2),
 `branch_length` (70.0), `num_leaves` (5), `leaf_length` (55.0), `leaf_angle`
 (25.0; max 30 fused, max 60 with insert leaves), `leaf_mount` (`"printed"` fused |
 `"insert"` push-in leaf plate written as `<name>_leaves.*`), `soil_cap` (removable
