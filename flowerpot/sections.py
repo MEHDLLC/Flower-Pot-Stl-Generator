@@ -23,6 +23,7 @@ from typing import Sequence
 import numpy as np
 
 from .params import PotParams
+from .profile import max_wall_slope, slope_budget
 
 
 # ---------------------------------------------------------------------------
@@ -101,6 +102,15 @@ class Section:
         """Height used for decoration, clamped at :attr:`freeze_z`."""
         return min(z, self.freeze_z)
 
+    def decoration_slope(self, z: float) -> float:
+        """Largest ``|d(added radius)/dz|`` this style contributes at ``z``.
+
+        Anything the texture lays on top has to fit in what is left of the
+        overhang budget after this, so a style that stands proud of the wall
+        must declare its own gradient here.
+        """
+        return 0.0
+
     # -- outline -------------------------------------------------------
     def radius(self, theta: np.ndarray, z: float, r: float, decorate: bool) -> np.ndarray:
         rad = self._shape_radius(theta, z, r, decorate)
@@ -150,10 +160,12 @@ class RibbedSection(Section):
     """ribbed_spiral - sinusoidal flutes standing proud of the wall.
 
     The ribs are *added* outside the nominal radius, never carved into it,
-    so the wall is never thinner than ``wall_thickness``.  They fade out over
-    the first few millimetres so the pot still meets the bed with a clean
-    round footprint.
+    so the wall is never thinner than ``wall_thickness``.  They fade in above
+    the base so the pot still meets the bed with a clean round footprint,
+    over a distance sized to whatever overhang budget the wall leaves free.
     """
+
+    _fade_cache: float | None = None
 
     def _shape_radius(self, theta, z, r, decorate):
         p = self.p
@@ -165,11 +177,45 @@ class RibbedSection(Section):
 
         depth = p.rib_depth
         if p.base_flat:
-            # ramp the ribs in above the base; the ramp angle stays well under
-            # the overhang limit because fade >= 2 * rib_depth.
-            fade = max(2.0 * p.rib_depth, 5.0)
-            depth *= min(1.0, max(0.0, z / fade))
+            depth *= min(1.0, max(0.0, z / self._fade_length()))
         return r + depth * wave
+
+    def decoration_slope(self, z: float) -> float:
+        p = self.p
+        if p.rib_depth <= 0 or p.rib_count <= 0:
+            return 0.0
+        grad = self._twist_gradient()
+        fade = self._fade_length()
+        if p.base_flat and z < fade:
+            grad += p.rib_depth / fade          # the ribs are still ramping in
+        return grad
+
+    def _twist_gradient(self) -> float:
+        """Radial gradient from the flutes spiralling as they rise."""
+        p = self.p
+        return (0.5 * p.rib_count * p.rib_depth
+                * math.radians(abs(p.rib_twist_degrees)) / max(p.height, 1e-9))
+
+    def _fade_length(self) -> float:
+        """How far above the base the ribs take to reach full depth.
+
+        The ramp is a radial gradient of ``rib_depth / fade``, and it lands
+        on top of whatever the wall itself is already leaning - on a vase
+        foot that flares outward at 30 degrees there is far less budget
+        left than on a straight pot, so the fade has to stretch.  The twist
+        contributes a gradient of its own and is charged for too.
+        """
+        p = self.p
+        if self._fade_cache is None:
+            floor = max(2.0 * p.rib_depth, 5.0)
+            twist_grad = self._twist_gradient()
+            fade = floor
+            for _ in range(4):        # a longer fade may span steeper wall
+                spent = max_wall_slope(p, 0.0, fade) + twist_grad
+                room = max(slope_budget(p) - spent, 0.05)
+                fade = max(floor, p.rib_depth / room)
+            self._fade_cache = fade
+        return self._fade_cache
 
 
 class PolygonSection(Section):

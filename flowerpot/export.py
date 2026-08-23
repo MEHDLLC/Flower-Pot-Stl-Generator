@@ -137,6 +137,7 @@ def export_pot(
     # the accent color goes on the rim, whose foot height comes from the profile
     rim_z = build_profiles(params).decoration_freeze_z if params.accent_color else None
 
+    skipped: list[str] = []
     for builder, stem, is_pot in jobs:
         if single_stem is not None:
             suffix = stem[len(name):] if stem.startswith(name) else ""
@@ -158,8 +159,12 @@ def export_pot(
                       f"the {PRINTERS[printer]['model']} bed ({bw} x {bd} x {bh} mm)",
                       file=sys.stderr)
         if not (report.ok or force):
-            print("  !! not written: audit failed (use force to write anyway)",
-                  file=sys.stderr)
+            # stdout, not stderr: this line has to reach the workflow's job
+            # summary, which only captures stdout.  A piece silently missing
+            # from the artifact is the worst possible way to report this.
+            print(f"  !! {stem} NOT WRITTEN: it failed the print audit above "
+                  f"(pass force to write it anyway)")
+            skipped.append(stem)
             continue
 
         png_bytes = None
@@ -187,5 +192,13 @@ def export_pot(
                 )
             result.written.append(path)
             print(f"  -> {path}")
+
+    if skipped:
+        # an incomplete set is easy to miss in a folder of files, so spell it
+        # out once at the end, where a reader actually looks
+        print(f"\n!! INCOMPLETE: {len(skipped)} of {len(jobs)} piece(s) failed "
+              f"the audit and were not written: {', '.join(skipped)}")
+        print("!! the pieces that were written are still printable; the set "
+              "above is missing.")
 
     return result

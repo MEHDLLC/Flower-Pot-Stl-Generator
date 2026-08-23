@@ -232,7 +232,7 @@ def build_pot(p: PotParams) -> trimesh.Trimesh:
     section = make_section(p)
     prof = build_profiles(p)
     section.freeze_z = prof.decoration_freeze_z
-    section.texture = make_texture(p, prof)
+    section.texture = make_texture(p, prof, section)
 
     # a texture's grooves need rings a bit closer together than a bare wall
     step = p.vertical_step

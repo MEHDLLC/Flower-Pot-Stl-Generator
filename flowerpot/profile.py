@@ -109,6 +109,30 @@ def wall_slope(p: PotParams, z: float) -> float:
     return (wall_radius(p, hi) - wall_radius(p, lo)) / (hi - lo)
 
 
+def max_wall_slope(p: PotParams, z0: float, z1: float,
+                   step: float = 1.0) -> float:
+    """Steepest outward lean the bare wall reaches over ``[z0, z1]``.
+
+    Decoration that stands proud of the wall (ribs, texture) adds its own
+    radial gradient on top of this, so every such feature has to size its
+    ramps against what the wall has already spent of the overhang budget.
+    """
+    if z1 <= z0:
+        return abs(wall_slope(p, z0))
+    n = max(2, int(math.ceil((z1 - z0) / max(step, 1e-3))) + 1)
+    return max(abs(wall_slope(p, z0 + (z1 - z0) * i / (n - 1)))
+               for i in range(n))
+
+
+def slope_budget(p: PotParams, reserve: float = 0.08) -> float:
+    """How much radial gradient a decoration may add, as dr/dz.
+
+    ``arctan`` of the total gradient is the printed overhang lean, so the
+    budget is the tangent of the limit less a small safety reserve.
+    """
+    return math.tan(math.radians(p.overhang_limit_deg)) - reserve
+
+
 def _solve_chamfer_start(p: PotParams, rim_radius: float, rim_bottom_z: float) -> float:
     """Height where the rim's underside chamfer leaves the wall.
 
