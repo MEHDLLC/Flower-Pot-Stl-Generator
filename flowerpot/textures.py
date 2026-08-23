@@ -26,7 +26,7 @@ import math
 import numpy as np
 
 from .params import PotParams
-from .profile import Profiles, wall_radius, wall_slope
+from .profile import Profiles, slope_budget, wall_radius, wall_slope
 
 #: texture names -> Texture method (validated against params.TEXTURES)
 _ROW = math.sqrt(3.0) / 2.0
@@ -46,9 +46,12 @@ def _ridge(frac, groove):
 class Texture:
     """Callable displacement field ``tex(theta, z) -> mm`` for one pot."""
 
-    def __init__(self, p: PotParams, r_ref: float, z_lo: float, z_hi: float):
+    def __init__(self, p: PotParams, r_ref: float, z_lo: float, z_hi: float,
+                 section_slope=None):
         self.p = p
         self.depth = p.texture_depth
+        #: gradient the style underneath already spends (ribs, mostly)
+        self.section_slope = section_slope or (lambda z: 0.0)
         circumference = 2.0 * math.pi * r_ref
         #: whole number of pattern cells around the pot -> seamless wrap
         self.n_around = max(3, round(circumference / p.texture_cell))
@@ -58,21 +61,75 @@ class Texture:
         self.z_lo, self.z_hi = z_lo, z_hi
         self.fade = 6.0                       # vertical ease-in/out band, mm
         self.fn = getattr(self, "_" + p.surface_texture)
+        #: steepest dr/dz the pattern itself makes, per 1 mm of amplitude
+        self.grad = self._measure_gradient()
+        #: how much gradient the amplitude *ramp* may spend, and hence how
+        #: far a ramp has to stretch (see :meth:`_window`)
+        self.ramp = 0.10
+        self.reach = max(2.0, self.depth / self.ramp)
+        self._table_z, self._table = self._build_window_table()
+
+    def _measure_gradient(self) -> float:
+        """Max ``|d fn / dz|`` of the pattern, sampled over two cells."""
+        theta = np.linspace(0.0, 2.0 * math.pi, 256, endpoint=False)
+        step = 0.2
+        zs = np.arange(0.0, 2.0 * self.cell_v + step, step)
+        vals = np.array([self.fn(theta, float(z)) for z in zs])
+        if len(vals) < 2:
+            return 1.0
+        return max(float(np.abs(np.diff(vals, axis=0)).max()) / step, 1e-6) * 1.1
 
     # -- amplitude window ------------------------------------------------
-    def _window(self, z: float) -> float:
+    def _envelope(self, z: float) -> float:
+        """Amplitude fraction the overhang budget can afford at ``z``.
+
+        The printed lean is ``arctan`` of the total radial gradient, and the
+        wall has already spent ``|wall_slope|`` of it before the texture adds
+        anything.  What is left over, minus the reserve kept for the ramp,
+        divided by the pattern's own gradient, is the deepest the texture may
+        be here - so it melts away exactly as fast as steep walls demand
+        (vase bellies, bottle shoulders, wave flanks) and no faster.
+        """
         a = float(_smoothstep(np.float64((z - self.z_lo) / self.fade)))
         b = float(_smoothstep(np.float64((self.z_hi - z) / self.fade)))
-        # melt the texture away where the wall itself is steep (vase bellies,
-        # bottle shoulders): the groove gradient would stack on the wall's
-        # slope and blow the overhang budget.  Full depth below 0.35 wall
-        # slope, gone by 0.5 - judged over a +-6 mm window so the amplitude
-        # ramps back gradually after a steep stretch instead of snapping to
-        # full at a curve breakpoint (the snap itself is a cliff).
-        slope = max(abs(wall_slope(self.p, z + dz))
-                    for dz in (-6.0, -3.0, 0.0, 3.0, 6.0))
-        calm = float(np.clip((0.5 - slope) / 0.15, 0.0, 1.0))
-        return min(a, b) * calm
+        room = (slope_budget(self.p) - self.ramp
+                - abs(wall_slope(self.p, z)) - self.section_slope(z))
+        afford = room / max(self.depth * self.grad, 1e-9)
+        return min(a, b, max(afford, 0.0))
+
+    def _build_window_table(self) -> tuple[np.ndarray, np.ndarray]:
+        """Rate-limit the envelope so the ramp is a bounded gradient too.
+
+        Melting is not free: sweeping the amplitude from nothing to full is
+        itself a radial ramp, and a fast one stacks onto the wall just like
+        the grooves do (a texture that snapped back to full depth beside a
+        wave crest is what used to break the audit there).
+
+        So the envelope is eroded by a cone of slope ``1 / reach``: the
+        result is the lower envelope of cones planted on a *fixed* grid,
+        which makes it ``1 / reach``-Lipschitz at every z, not merely at the
+        sample points - a cone measured relative to z instead staircases,
+        and a staircase has exactly the cliff this is meant to prevent.
+        """
+        step = 0.5
+        zs = np.arange(self.z_lo - self.reach - step,
+                       self.z_hi + self.reach + 2.0 * step, step)
+        # each sample is the *minimum* across its cell, not the value at the
+        # centre: the wall's slope steps at every curve breakpoint, and a
+        # table that interpolated across such a step would ride over the top
+        # of it and hand the texture amplitude the budget cannot afford
+        env = np.array([min(self._envelope(float(z) + f * step)
+                            for f in (-0.5, -0.25, 0.0, 0.25, 0.5))
+                        for z in zs])
+        eroded = env.copy()
+        for i in range(1, int(math.ceil(self.reach / step)) + 1):
+            penalty = i * step / self.reach
+            eroded[i:] = np.minimum(eroded[i:], env[:-i] + penalty)
+            eroded[:-i] = np.minimum(eroded[:-i], env[i:] + penalty)
+        return zs, np.clip(eroded, 0.0, 1.0)
+
+    def _window(self, z: float) -> float:
+        return float(np.interp(z, self._table_z, self._table))
 
     def __call__(self, theta: np.ndarray, z: float) -> np.ndarray:
         amp = self.depth * self._window(z)
@@ -145,8 +202,14 @@ class Texture:
         return planks * edge
 
 
-def make_texture(p: PotParams, prof: Profiles) -> Texture | None:
-    """Build the texture field for a pot, or None if there is nothing to do."""
+def make_texture(p: PotParams, prof: Profiles, section=None) -> Texture | None:
+    """Build the texture field for a pot, or None if there is nothing to do.
+
+    ``section`` is the style the texture will sit on: its own radial
+    gradient comes out of the same overhang budget, so the texture has to
+    know about it (ribs plus a deep texture on a vase flank used to add up
+    past the limit).
+    """
     if p.surface_texture == "none" or p.texture_depth <= 0:
         return None
     if p.pot_style == "low_poly_faceted":
@@ -158,4 +221,5 @@ def make_texture(p: PotParams, prof: Profiles) -> Texture | None:
         return None      # pot too short for the fades to fit anything between
 
     r_ref = 0.5 * (wall_radius(p, z_lo) + wall_radius(p, z_hi))
-    return Texture(p, r_ref, z_lo, z_hi)
+    return Texture(p, r_ref, z_lo, z_hi,
+                   section.decoration_slope if section is not None else None)

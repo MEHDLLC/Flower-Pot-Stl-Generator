@@ -34,9 +34,13 @@ jobs:
           pip install -r requirements.txt matplotlib
 
       - name: Generate
+        id: generate
         env:                 # env indirection keeps inputs out of the script
           CLI_ARGS: ${{ inputs.cli_args }}
         run: |
+          # pipefail: without it the pipeline reports tee's exit code, so a
+          # failed audit uploaded a silently incomplete artifact on a green run
+          set -o pipefail
           # tokens only - they become python argv entries, never shell code
           read -ra ARGS <<< "$CLI_ARGS"
           python -m flowerpot "${ARGS[@]}" --format both --preview --out out/ | tee report.txt
@@ -48,14 +52,22 @@ jobs:
         run: |
           {
             echo "## $TITLE"
+            if [ "${{ steps.generate.outcome }}" != "success" ]; then
+              echo "> **This run did not produce a complete set.** A piece"
+              echo "> failed its print audit and was not written - see the"
+              echo "> audit below for which one and why."
+            fi
             echo '```'
             cat report.txt 2>/dev/null || echo "generation failed - see the log"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # uploaded even on failure: whatever did pass the audit is still worth
+      # having, and the run is red so nobody mistakes it for a full set
       - name: Upload the artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact }}-${{ github.run_number }}
           path: out/
-          if-no-files-found: error
+          if-no-files-found: warn
