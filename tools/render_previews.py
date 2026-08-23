@@ -313,6 +313,28 @@ def leaves_figure(out: Path) -> None:
               out / "leaves.png")
 
 
+def split_figure(out: Path) -> None:
+    import trimesh
+    from flowerpot.profile import build_profiles
+    from flowerpot.stem import (build_stem_piece, stem_section_bounds,
+                                _NODE_ENGAGE)
+    p = PotParams(vase_profile="bud", stem=True, stem_mount="screw",
+                  height=220, top_diameter=110, stem_length=130,
+                  drainage_pattern="none", add_top_rim=False,
+                  printer="creality-k1-max", **FAST)
+    floor_z = build_profiles(p).floor_top_z
+    bounds = stem_section_bounds(p, floor_z)
+    lower = build_stem_piece(p, floor_z, 0)
+    upper = build_stem_piece(p, floor_z, 1)
+    posed = upper.copy()
+    posed.apply_translation((0.0, 0.0, bounds[1][0] - _NODE_ENGAGE))
+    mesh_grid([(f"part 1 ({lower.extents[2]:.0f} mm)", lower, "sage"),
+               (f"part 2 ({upper.extents[2]:.0f} mm)", upper, "sage"),
+               ("screwed together at the node", 
+                trimesh.util.concatenate([lower, posed]), "sage")],
+              out / "stem_split.png")
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -334,6 +356,7 @@ def main(outdir: str = "docs/img") -> None:
     vase_figure(out)
     planted_figure(out)
     leaves_figure(out)
+    split_figure(out)
 
 
 if __name__ == "__main__":

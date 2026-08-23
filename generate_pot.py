@@ -58,6 +58,10 @@ PARAMS = dict(
     #                           to clean, or print a taller stem than the pot
     stem_length=130.0,
     stem_bore=9.0,
+    stem_split="auto",        # a screw-in stem taller than the printer is
+    #                           written as <name>_stem_part1/2..., joined by
+    #                           threaded nodes; "never" keeps one tall piece,
+    #                           "always" forces a node (handy for shipping)
     stem_curve=6.0,           # mm of gentle sway above the rim; 0 = straight
     num_branches=2,           # side stems curving off the main one, each with
     #                           its own open tip joined to the water column

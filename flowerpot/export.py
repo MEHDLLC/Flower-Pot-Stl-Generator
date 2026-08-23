@@ -121,10 +121,15 @@ def export_pot(
     else:
         jobs = [(build_pot, name, True)]
         if params.stem and params.stem_mount == "screw":
-            from .stem import build_stem_piece
+            from .stem import build_stem_piece, stem_piece_count
             floor_z = build_profiles(params).floor_top_z
-            jobs.append((lambda q, fz=floor_z: build_stem_piece(q, fz),
-                         f"{name}_stem", False))
+            n = stem_piece_count(params, floor_z)
+            for i in range(n):
+                # a stem too tall for the bed comes apart at threaded nodes
+                suffix = "_stem" if n == 1 else f"_stem_part{i + 1}"
+                jobs.append(
+                    (lambda q, fz=floor_z, k=i: build_stem_piece(q, fz, k),
+                     f"{name}{suffix}", False))
         if params.stem and params.leaf_mount == "insert":
             from .stem import build_leaf_inserts
             jobs.append((build_leaf_inserts, f"{name}_leaves", False))
