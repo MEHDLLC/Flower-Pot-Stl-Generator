@@ -33,7 +33,8 @@ DRAINAGE_PATTERNS = ("center", "ring", "grid", "none")
 
 #: Vase silhouettes: named wall curves that replace the straight taper.
 #: Implementations live in :mod:`flowerpot.profile`.
-VASE_PROFILES = ("none", "classic", "bud", "gourd", "bottle", "cone", "wave")
+VASE_PROFILES = ("none", "classic", "bud", "gourd", "bottle", "cone",
+                 "wave", "bouquet")
 
 #: Relief textures that can be pressed into the outside of the wall.  They
 #: are independent of ``pot_style`` (except low_poly_faceted, whose sparse
@@ -220,6 +221,24 @@ class PotParams:
     #                                  shortened or skipped automatically
 
     # ------------------------------------------------------------------
+    # 4e. Bouquet planter (the mouth becomes a cluster of blooms)
+    # ------------------------------------------------------------------
+    bouquet: bool = False            # gather the vessel to a neck and grow a
+    #                                  ring of hollow flower heads out of it;
+    #                                  each cup opens into the pot, so the
+    #                                  whole thing plants like one pot
+    bouquet_flower: str = "tulip"    # "tulip" (pointed petals, open cup) or
+    #                                  "rose" (spiralled petals, closing bud)
+    bouquet_count: int = 5           # blooms in the ring, 3-8; the mouth
+    #                                  itself flares into a bloom in the
+    #                                  middle of them - that is what you
+    #                                  plant in
+    bouquet_head_diameter: float = 0.0   # 0 = size it from the pot
+    bouquet_tilt: float = 15.0       # how far the ring leans out; the lean
+    #                                  adds to the cup's flare, so 18 is the
+    #                                  cap before the petals need supports
+
+    # ------------------------------------------------------------------
     # 5a. Mason-jar greenhouse seat (classic pot, self-watering inner,
     #     or a standalone collar ring with the reservoir insert)
     # ------------------------------------------------------------------
@@ -361,6 +380,26 @@ class PotParams:
         if self.stem_split not in ("auto", "never", "always"):
             raise ParameterError(
                 'stem_split must be "auto", "never" or "always"')
+        if self.bouquet:
+            if self.bouquet_flower not in ("tulip", "rose"):
+                raise ParameterError('bouquet_flower must be "tulip" or "rose"')
+            if not 3 <= int(self.bouquet_count) <= 8:
+                raise ParameterError("bouquet_count should be 3-8")
+            if not 0.0 <= self.bouquet_tilt <= 18.0:
+                raise ParameterError(
+                    "bouquet_tilt must be 0-18 degrees: past 18 the lean and "
+                    "the cup's own flare together need supports"
+                )
+            if self.bouquet_head_diameter and not \
+                    16.0 <= self.bouquet_head_diameter <= 60.0:
+                raise ParameterError("bouquet_head_diameter should be 16-60 mm")
+            if self.stem:
+                raise ParameterError(
+                    "bouquet and stem both fill the mouth - pick one")
+            if self.jar_greenhouse:
+                raise ParameterError(
+                    "bouquet and jar_greenhouse both occupy the mouth - "
+                    "pick one")
         if self.stem:
             max_leaf = 60.0 if self.leaf_mount == "insert" else 30.0
             if not 10.0 <= self.leaf_angle <= max_leaf:

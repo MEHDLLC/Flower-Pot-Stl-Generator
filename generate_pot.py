@@ -78,6 +78,17 @@ PARAMS = dict(
     #                           holes - the potted-plant look, written as
     #                           <name>_soil_cap
 
+    # -- bouquet planter (the mouth becomes a cluster of blooms) -------------
+    bouquet=False,            # gather the pot to a wide mouth and ring it
+    #                           with hollow blooms; the mouth itself flares
+    #                           into a flower and is what you plant in, and
+    #                           each ring bloom is a pocket that drains into
+    #                           the body.  Defaults to a trumpet silhouette.
+    bouquet_flower="tulip",   # "tulip" (pointed petals) | "rose" (spiralled)
+    bouquet_count=5,          # blooms in the ring, 3-8
+    bouquet_head_diameter=0.0,  # 0 = sized from the pot
+    bouquet_tilt=15.0,        # how far the ring leans out; 18 is the cap
+
     # -- uniform scale --------------------------------------------------------
     scale=1.0,                # resize the pot's proportions; wall_thickness and
     #                           base_thickness stay exactly as set below

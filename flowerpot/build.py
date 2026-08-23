@@ -262,6 +262,13 @@ def build_pot(p: PotParams) -> trimesh.Trimesh:
     if p.jar_greenhouse:
         from .jar import seat_cutters
         cutters = cutters + seat_cutters(p, p.height)
+    bouquet_solids: list[trimesh.Trimesh] = []
+    if p.bouquet:
+        from .bouquet import bouquet_parts
+        bouquet_solids, bouquet_cutters = bouquet_parts(p)
+        cutters = cutters + bouquet_cutters
+    if bouquet_solids:              # blooms first, then every cavity at once
+        pot = _boolean("union", [pot] + bouquet_solids)
     if cutters:
         pot = _boolean("difference", [pot] + cutters)
 

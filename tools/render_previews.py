@@ -335,6 +335,23 @@ def split_figure(out: Path) -> None:
               out / "stem_split.png")
 
 
+def bouquet_figure(out: Path) -> None:
+    import trimesh
+    cases = []
+    for flower, color in (("tulip", "blush"), ("rose", "clay")):
+        p = PotParams(bouquet=True, bouquet_flower=flower, height=190,
+                      top_diameter=115, drainage_pattern="ring",
+                      add_top_rim=False, **FAST)
+        cases.append((f"{flower} bouquet planter", build_pot(p), color))
+    p = PotParams(bouquet=True, bouquet_count=3, height=190, top_diameter=115,
+                  drainage_pattern="ring", add_top_rim=False, **FAST)
+    pot = build_pot(p)
+    half = trimesh.intersections.slice_mesh_plane(
+        pot, plane_normal=[0, -1, 0], plane_origin=[0, 0, 0], cap=True)
+    cases.append(("cut open: one hollow, blooms drain in", half, "sand"))
+    mesh_grid(cases, out / "bouquet.png")
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -357,6 +374,7 @@ def main(outdir: str = "docs/img") -> None:
     planted_figure(out)
     leaves_figure(out)
     split_figure(out)
+    bouquet_figure(out)
 
 
 if __name__ == "__main__":
