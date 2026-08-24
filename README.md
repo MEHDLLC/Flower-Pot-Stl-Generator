@@ -77,6 +77,7 @@ pick the product — each has its own *Run workflow* form:
 | **Generate · simple pot** | thin-walled nursery pots: shape, scale, wall, side + bottom drainage |
 | **Generate · bouquet planter** | a pot whose mouth is a ring of tulips or roses, each a planting pocket |
 | **Generate · vase** | six curvy silhouettes × any style × any texture, plus the planted stem (fused or screw-in) |
+| **Generate · trailer hitch mount** | a socket that snaps over a trailer ball, one piece or a screw-on collar |
 
 Anything not on a form goes in *extra_args* exactly as you would type it on the CLI.
 Every run uploads an artifact with the `.stl`, the colored `.3mf` and a `.png`
@@ -336,6 +337,53 @@ python -m flowerpot --bouquet --bouquet-flower rose --bouquet-count 7 \
     --height 210 --top-diameter 130 --color clay
 ```
 
+## Trailer hitch mount
+
+![trailer hitch mount](docs/img/hitch.png)
+
+`--hitch-mount cover` prints a socket that snaps over a trailer ball. There is
+nothing to tighten and nothing to lose: it is a spherical cup cut off *below*
+the ball's equator, sliced into fingers that spread as you push it down and
+close under the ball once it is on.
+
+```bash
+python -m flowerpot --hitch-mount cover --hitch-ball 2 --color charcoal
+python -m flowerpot --hitch-mount screw --hitch-ball 2-5/16 --hitch-grip 1.3
+```
+
+> **Take it off before towing.** It sits where the coupler goes and it is not a
+> structural part.
+
+Three numbers decide whether a snap fit works, and all three are solved for:
+
+* **The undercut** (`hitch_grip`, default 1.1 mm) is how much narrower the mouth
+  is than the ball. It is the entire retention — and it is also exactly how far
+  each finger has to bend, which sets everything else.
+* **The slot length.** A finger is a cantilever: bending its tip by the undercut
+  strains its outer fibre by `3·t·δ / 2·L²`. It is printed standing up, so that
+  strain pulls *across* the layer lines, which is the weak direction. So the
+  slots are sized **from** a 1.2 % strain target rather than from looks, and if
+  the socket is too shallow to grow slots that long the generator says so and
+  tells you what grip it would take (or to switch to PETG).
+* **Where the cavity stops being a sphere.** A sphere's roof is flat at the top
+  and no printer will bridge it. At the latitude where the ball's own surface
+  reaches the overhang limit, the cavity leaves the sphere *on the tangent* and
+  closes as a cone — which is both printable and the smallest lid that still
+  clears the ball. Everything below the equator is free: a cavity that widens as
+  it rises hangs over nothing.
+
+The mouth seats about a third of a radius below the ball's centre, which keeps
+the grip on the spherical part — real balls flare into their shank not far
+below the equator. Fit is proved by booleaning an actual sphere into the actual
+part, and the thread by sweeping the phase until the two helices share nothing.
+
+`--hitch-mount screw` splits it into `<name>_hitch_collar` (the gripping socket,
+with a coarse thread on top) and `<name>_hitch_cap` (a domed lid). One collar per
+ball size then carries anything with the matching female thread, and the two
+parts can be different colors. `hitch_ball` takes `1-7/8`, `2`, `2-5/16`, `3` or
+a plain diameter in mm; `hitch_fingers` (default 5, odd is better — an even count
+puts a slot opposite a slot) slices the socket.
+
 ## Self-watering set
 
 ![self-watering set](docs/img/selfwatering.png)
@@ -554,6 +602,9 @@ producing a broken mesh.
 (25.0; max 30 fused, max 60 with insert leaves), `leaf_mount` (`"printed"` fused |
 `"insert"` push-in leaf plate written as `<name>_leaves.*`), `soil_cap` (removable
 raked-soil lid, written as `<name>_soil_cap.*`).
+
+**Hitch mount** — `hitch_mount` (`"none"` | `"cover"` | `"screw"`),
+`hitch_ball` (`"2"`), `hitch_fingers` (5), `hitch_grip` (1.1).
 
 **Bouquet** — `bouquet`, `bouquet_flower` (`"tulip"` | `"rose"`),
 `bouquet_count` (5), `bouquet_head_diameter` (0.0 = auto), `bouquet_tilt`

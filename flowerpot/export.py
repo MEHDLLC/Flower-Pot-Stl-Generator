@@ -103,6 +103,15 @@ def export_pot(
             (build_hydro_cup, f"{name}_cup", False),
             (build_hydro_cap, f"{name}_cap", False),
         ]
+    elif params.hitch_mount == "cover":
+        from .hitch import build_hitch_cover
+        jobs: list[tuple] = [(build_hitch_cover, f"{name}_hitch_cover", True)]
+    elif params.hitch_mount == "screw":
+        from .hitch import build_hitch_cap, build_hitch_collar
+        jobs = [
+            (build_hitch_collar, f"{name}_hitch_collar", True),
+            (build_hitch_cap, f"{name}_hitch_cap", False),
+        ]
     elif params.reservoir_insert:
         from .insert import build_insert_platform, build_insert_tube
         jobs = [
