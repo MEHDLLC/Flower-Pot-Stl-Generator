@@ -80,8 +80,13 @@ _CAP_WALL = 3.2
 # sizing
 # ---------------------------------------------------------------------------
 def ball_diameter(p: PotParams) -> float:
-    """The ball this mount is cut for, in mm."""
-    key = str(p.hitch_ball).strip()
+    """The ball this mount is cut for, in mm.
+
+    The value can arrive from a workflow form, so strip stray quotes: a
+    shell that word-splits its arguments hands over ``'"2"'`` rather than
+    ``'2'``, and rejecting that is technically right and completely useless.
+    """
+    key = str(p.hitch_ball).strip().strip("\"'").strip()
     if key in BALL_SIZES:
         return BALL_SIZES[key]
     try:
