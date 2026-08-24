@@ -1,0 +1,55 @@
+# Actions -> "Generate · trailer hitch mount" -> Run workflow.
+# A socket that snaps over a trailer ball: a spherical cup cut off below the
+# ball's equator, sliced into fingers that spread going on and close under
+# it.  Take it off before towing.
+name: "Generate · trailer hitch mount"
+
+on:
+  workflow_dispatch:
+    inputs:
+      hitch_mount:
+        description: "One piece, or a collar you can screw things onto"
+        type: choice
+        default: cover
+        options: [cover, screw]
+      hitch_ball:
+        description: "Ball size"
+        type: choice
+        default: "2"
+        options: ["1-7/8", "2", "2-5/16", "3"]
+      hitch_grip:
+        description: "Undercut in mm - how hard it snaps (0.8-1.6)"
+        type: string
+        default: "1.1"
+      hitch_fingers:
+        description: "Slices the socket is cut into (odd is better)"
+        type: string
+        default: "5"
+      wall_thickness:
+        description: "Socket wall in mm - it is the spring (min 3.2)"
+        type: string
+        default: "3.4"
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: charcoal
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  hitch:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Hitch mount: ${{ inputs.hitch_ball }} ball, ${{ inputs.hitch_mount }}"
+      artifact: "hitch-${{ inputs.hitch_mount }}"
+      cli_args: >-
+        --name hitch
+        --hitch-mount ${{ inputs.hitch_mount }}
+        --hitch-ball "${{ inputs.hitch_ball }}"
+        --hitch-grip ${{ inputs.hitch_grip }}
+        --hitch-fingers ${{ inputs.hitch_fingers }}
+        --wall-thickness ${{ inputs.wall_thickness }}
+        --color ${{ inputs.color }}
+        ${{ inputs.extra_args }}

@@ -300,6 +300,27 @@ class PotParams:
     stack_pod_diameter: float = 70.0 # clip-on pod diameter for the stack
 
     # ------------------------------------------------------------------
+    # 5f. Trailer-hitch ball mount
+    # ------------------------------------------------------------------
+    hitch_mount: str = "none"        # "cover" writes a one-piece cover that
+    #                                  snaps over a trailer ball; "screw"
+    #                                  splits it into <name>_hitch_collar
+    #                                  (the gripping socket, with a thread on
+    #                                  top) and <name>_hitch_cap (a lid) so
+    #                                  one collar per ball size can carry
+    #                                  anything you screw onto it.
+    #                                  Take it off before towing.
+    hitch_ball: str = "2"            # ball diameter: "1-7/8" | "2" |
+    #                                  "2-5/16" | "3", or a number in mm
+    hitch_fingers: int = 5           # slices the socket is cut into; odd
+    #                                  counts avoid a weak diameter
+    hitch_grip: float = 1.1          # how much narrower the mouth is than the
+    #                                  ball.  This IS the retention, and it is
+    #                                  also how far each finger must bend, so
+    #                                  bigger means a firmer snap and a more
+    #                                  strained spring.  0.8-1.6 is the range.
+
+    # ------------------------------------------------------------------
     # 6. Matching drip saucer (exported as a second STL)
     # ------------------------------------------------------------------
     generate_saucer: bool = False
@@ -556,6 +577,23 @@ class PotParams:
                 "hydro_tower cannot combine with self_watering or "
                 "reservoir_insert - generate them separately"
             )
+        if self.hitch_mount != "none":
+            if self.hitch_mount not in ("cover", "screw"):
+                raise ParameterError(
+                    f"unknown hitch_mount {self.hitch_mount!r}; "
+                    f"choose from ['cover', 'screw']"
+                )
+            if not 3 <= self.hitch_fingers <= 9:
+                raise ParameterError("hitch_fingers should be 3-9")
+            if self.hitch_fingers % 2 == 0:
+                warn.append(
+                    f"{self.hitch_fingers} hitch fingers puts a slot opposite "
+                    f"a slot, which is the socket's weakest diameter - an odd "
+                    f"count spreads the grip"
+                )
+            from .hitch import ball_diameter, check_hitch
+            ball_diameter(self)             # raises on an unknown ball
+            warn += check_hitch(self)
         if self.reservoir_insert:
             if self.self_watering:
                 raise ParameterError(

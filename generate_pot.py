@@ -132,6 +132,16 @@ PARAMS = dict(
     #                            "creality-k1", "creality-ender3-v3-ke", or
     #                            "none" for a plain geometry-only 3MF
 
+    # -- trailer hitch mount (snaps over a trailer ball) ---------------------
+    hitch_mount="none",       # "cover" = one piece; "screw" = a gripping
+    #                           collar plus a screw-on cap, so one collar
+    #                           per ball size carries anything.
+    #                           TAKE IT OFF BEFORE TOWING.
+    hitch_ball="2",           # "1-7/8" | "2" | "2-5/16" | "3", or mm
+    hitch_fingers=5,          # slices the socket is cut into; odd is better
+    hitch_grip=1.1,           # mm the mouth is narrower than the ball - the
+    #                           retention, and how far a finger has to bend
+
     # -- hydroponic tower (writes <name>_segment, _cup and _cap) -------------
     hydro_tower=False,        # stackable column segments with angled ports
     tower_diameter=110.0,

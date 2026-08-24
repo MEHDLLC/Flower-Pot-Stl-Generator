@@ -352,6 +352,36 @@ def bouquet_figure(out: Path) -> None:
     mesh_grid(cases, out / "bouquet.png")
 
 
+def hitch_figure(out: Path) -> None:
+    import trimesh
+    from flowerpot.hitch import (build_hitch_cap, build_hitch_collar,
+                                 build_hitch_cover, solve, thread_core)
+    cases = []
+    p = PotParams(hitch_mount="cover", hitch_ball="2", **FAST)
+    cover = build_hitch_cover(p)
+    cases.append(('snap-on cover, 2" ball', cover, "teal"))
+
+    # cut away, with the ball it grips shown seated in it
+    k = solve(p)
+    ball = trimesh.creation.icosphere(subdivisions=4, radius=k["r_ball"])
+    ball.apply_translation((0.0, 0.0, k["z_ball"]))
+    shank = trimesh.creation.cylinder(radius=0.44 * k["r_ball"], height=40.0,
+                                      sections=48)
+    shank.apply_translation((0.0, 0.0, k["z_ball"] - k["r_ball"] - 18.0))
+    both = trimesh.util.concatenate([cover, ball, shank])
+    half = trimesh.intersections.slice_mesh_plane(
+        both, plane_normal=[0, -1, 0], plane_origin=[0, 0, 0], cap=True)
+    cases.append(("cut open: the mouth grips under the equator", half, "sand"))
+
+    q = PotParams(hitch_mount="screw", hitch_ball="2", **FAST)
+    cap = build_hitch_cap(q)
+    cap.apply_translation((0.0, 0.0, thread_core(q)[1] + 18.0))
+    cases.append(("collar + screw-on cap",
+                  trimesh.util.concatenate([build_hitch_collar(q), cap]),
+                  "teal"))
+    mesh_grid(cases, out / "hitch.png", elev=18.0, azim=-52.0)
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -375,6 +405,7 @@ def main(outdir: str = "docs/img") -> None:
     leaves_figure(out)
     split_figure(out)
     bouquet_figure(out)
+    hitch_figure(out)
 
 
 if __name__ == "__main__":
