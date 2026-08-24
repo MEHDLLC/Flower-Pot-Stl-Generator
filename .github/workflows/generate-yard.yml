@@ -1,0 +1,74 @@
+# Actions -> "Generate · yard art" -> Run workflow.
+# A plant with a face and an opinion.  The flowers come apart into three
+# prints - body, petals and face disc - so a single-material printer gets a
+# three-colour object.  Mounts on a trailer ball, or stands on a disc.
+name: "Generate · yard art"
+
+on:
+  workflow_dispatch:
+    inputs:
+      yard_plant:
+        description: "Plant"
+        type: choice
+        default: sunflower
+        options: [sunflower, daisy, cactus]
+      yard_face:
+        description: "Expression"
+        type: choice
+        default: angry
+        options: [angry, smug, grin, sideeye, none]
+      yard_left_hand:
+        description: "Left hand"
+        type: choice
+        default: bird
+        options: [bird, fist, thumbs, peace, horns, wave, shrug, none]
+      yard_right_hand:
+        description: "Right hand"
+        type: choice
+        default: bird
+        options: [bird, fist, thumbs, peace, horns, wave, shrug, none]
+      hitch_mount:
+        description: "How it stands up"
+        type: choice
+        default: fused
+        options: [fused, screw, none]
+      hitch_ball:
+        description: "Trailer ball size (ignored when mount is none)"
+        type: choice
+        default: "2"
+        options: ["1-7/8", "2", "2-5/16", "3"]
+      yard_height:
+        description: "Overall height in mm, mount included"
+        type: string
+        default: "200"
+      yard_head_diameter:
+        description: "Flower head in mm (0 = size it from the height)"
+        type: string
+        default: "0"
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: mustard
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  yard:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Yard art: ${{ inputs.yard_face }} ${{ inputs.yard_plant }}"
+      artifact: "yard-${{ inputs.yard_plant }}"
+      cli_args: >-
+        --name ${{ inputs.yard_plant }}
+        --yard-plant ${{ inputs.yard_plant }}
+        --yard-face ${{ inputs.yard_face }}
+        --yard-left-hand ${{ inputs.yard_left_hand }}
+        --yard-right-hand ${{ inputs.yard_right_hand }}
+        --hitch-mount ${{ inputs.hitch_mount }}
+        --hitch-ball "${{ inputs.hitch_ball }}"
+        --yard-height ${{ inputs.yard_height }}
+        --yard-head-diameter ${{ inputs.yard_head_diameter }}
+        --color ${{ inputs.color }}
+        ${{ inputs.extra_args }}

@@ -382,6 +382,43 @@ def hitch_figure(out: Path) -> None:
     mesh_grid(cases, out / "hitch.png", elev=18.0, azim=-52.0)
 
 
+def yard_figure(out: Path) -> None:
+    import trimesh
+    from flowerpot.yard import (build_yard_body, build_yard_face,
+                                build_yard_head, head_pose, plan)
+
+    def assembled(p):
+        body = build_yard_body(p)
+        if p.yard_plant == "cactus":
+            return body
+        head = build_yard_head(p)
+        face = build_yard_face(p)
+        face.apply_translation((0.0, 0.0, 0.45 * plan(p)["thick"]))
+        head = trimesh.util.concatenate([head, face])
+        head.apply_transform(head_pose(p))
+        return trimesh.util.concatenate([body, head])
+
+    cases = []
+    for kind, face, hands, color in (
+            ("sunflower", "angry", ("bird", "bird"), "mustard"),
+            ("daisy", "grin", ("wave", "thumbs"), "blush"),
+            ("cactus", "smug", ("bird", "shrug"), "olive")):
+        p = PotParams(yard_plant=kind, yard_face=face, hitch_mount="fused",
+                      yard_left_hand=hands[0], yard_right_hand=hands[1], **FAST)
+        cases.append((f"{kind}, {face}", assembled(p), color))
+    mesh_grid(cases, out / "yard.png", elev=10.0, azim=-90.0)
+
+
+def yard_parts_figure(out: Path) -> None:
+    from flowerpot.yard import (build_yard_body, build_yard_face,
+                                build_yard_head)
+    p = PotParams(yard_plant="sunflower", hitch_mount="fused", **FAST)
+    mesh_grid([("body: standing", build_yard_body(p), "sage"),
+               ("head: flat, face up", build_yard_head(p), "mustard"),
+               ("face: flat, face up", build_yard_face(p), "clay")],
+              out / "yard-parts.png", elev=34.0, azim=-90.0)
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -406,6 +443,8 @@ def main(outdir: str = "docs/img") -> None:
     split_figure(out)
     bouquet_figure(out)
     hitch_figure(out)
+    yard_figure(out)
+    yard_parts_figure(out)
 
 
 if __name__ == "__main__":
