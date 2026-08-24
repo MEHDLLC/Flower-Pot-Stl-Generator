@@ -215,10 +215,14 @@ def test_an_even_finger_count_is_allowed_but_flagged():
 
 
 def test_the_finger_count_is_what_you_asked_for():
-    """Count the notches around the mouth's first layer."""
+    """Slice just above the plate: the wall comes apart into one closed
+    loop per finger, which is the whole point of the slots."""
     p = PotParams(hitch_mount="cover", hitch_ball="2", hitch_fingers=7, **FAST)
     mount = build_hitch_cover(p)
     ring = mount.section(plane_origin=[0, 0, 0.6], plane_normal=[0, 0, 1])
-    assert ring is not None
-    planar, _ = ring.to_2D()
-    assert len(planar.polygons_full) == 7
+    assert ring is not None and len(ring.discrete) == 7
+    # ... and back together again above them
+    k = solve(p)
+    whole = mount.section(plane_origin=[0, 0, k["slot"] + 2.0],
+                          plane_normal=[0, 0, 1])
+    assert len(whole.discrete) == 2               # one wall: outside, inside
