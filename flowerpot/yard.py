@@ -31,6 +31,14 @@ themselves.  So the cactus has no eyebrows.  It scowls with its eyes, which
 are tall lenses tilted inward, and its mouth is a row of separate slits -
 gritted teeth, and every one of them legal.
 
+The hands
+---------
+Four finger stations and a thumb, and every station is accounted for: the
+raised ones become tubes off the top of the fist, the rest curl into
+knuckles round its front.  That is not decoration.  Leave the other fingers
+out and a thumbs-up and a raised middle finger are the same tube on the
+same ball - which is exactly what they were until someone said so.
+
 The arms
 --------
 An arm is a stack of horizontal rings drifting sideways as it climbs (see
@@ -75,8 +83,11 @@ _CARVE_RESERVE = 3.5    # degrees held back on a carved cusp
 _TRUNK_FLARE = 1.22     # how much wider the body is at its foot
 _SHOULDER = 1.30        # shoulder radius, in wrist radii
 _EASE = 1.20            # peak/average lateral slope of an arm's easing curve
-_FIST = 2.35            # fist radius, in wrist radii
+_FIST = 2.10            # fist radius, in wrist radii
 _FINGER_TIP = 10.5      # where a fingertip lands above the wrist, same units
+_KNUCKLE_DROP = 1.05    # how far below the fist's top the knuckles sit
+_KNUCKLE_R = 0.30       # ... and how big they are, in fist radii
+_KNUCKLE_SPREAD = 55.0  # ... and how far round the fist they wrap
 
 #: brow tilt, eye scale, pupil shift, mouth bend and width, per expression.
 _EXPRESSION = {
@@ -90,17 +101,37 @@ _EXPRESSION = {
                     wide=0.64, tilt=6.0),
 }
 
-#: ``(offset across the fist, length scale)`` per raised finger.
+#: Four finger stations across the fist, index (0) to little (3).  A
+#: gesture says which of them stand up; the rest curl into knuckles, and
+#: there is always a thumb.  That is what tells a raised middle finger from
+#: a thumbs-up - without the other three fingers *being somewhere*, both
+#: are one tube on a ball.
+_STATIONS = 4
+
 _HAND = {
-    "bird": [(0.00, 1.00)],
-    "fist": [],
-    "thumbs": [(0.58, 0.72)],
-    "peace": [(-0.38, 0.92), (0.38, 0.92)],
-    "horns": [(-0.62, 0.86), (0.62, 0.86)],
-    "wave": [(-0.64, 0.70), (-0.21, 0.88), (0.21, 0.88), (0.64, 0.70)],
-    "shrug": [(-0.64, 0.66), (-0.21, 0.80), (0.21, 0.80), (0.64, 0.66)],
+    "bird":   dict(up=(1,), thumb="across", fat=1.30),
+    "fist":   dict(up=(), thumb="across"),
+    "thumbs": dict(up=(), thumb="up"),
+    "peace":  dict(up=(0, 1), thumb="across", splay=0.30),
+    "horns":  dict(up=(0, 3), thumb="across", splay=0.26),
+    "wave":   dict(up=(0, 1, 2, 3), thumb="out", splay=0.20),
+    "shrug":  dict(up=(0, 1, 2, 3), thumb="out", splay=0.20),
+    "none":   None,
 }
 
+#: How each thumb pose is built, in fist radii.  A raised thumb is a tube
+#: like a finger; a *tucked* one cannot be, because a thumb lying across a
+#: closed fist is nearly horizontal and a nearly horizontal tube is a
+#: ceiling.  So it is a lobe instead - which also stops it reading as a
+#: fifth finger, the exact failure that made a thumbs-up and a raised
+#: middle finger look alike in the first place.
+_THUMB = {
+    "across": dict(lobe=True, angle=80.0, drop=1.34, r=0.34),
+    "up": dict(out=0.62, front=0.12, drop=0.86, lean=0.16, length=2.70,
+               r=0.32),
+    "out": dict(out=0.52, front=0.16, drop=0.98, lean=0.66, length=1.85,
+                r=0.32),
+}
 
 # ---------------------------------------------------------------------------
 # layout
@@ -118,7 +149,7 @@ def head_diameter(p: PotParams) -> float:
     """
     if p.yard_head_diameter > 0.0:
         return float(p.yard_head_diameter)
-    return 0.78 * max(p.yard_height - mount_top(p), 40.0)
+    return 0.74 * max(p.yard_height - mount_top(p), 40.0)
 
 
 def face_disc_radius(p: PotParams) -> float:
@@ -369,11 +400,11 @@ def arm_path(p: PotParams, lay: dict, side: int, climb_scale: float = 1.0):
     if cactus:
         z0 = lay["z_mount"] + 0.16 * (lay["top"] - lay["z_mount"])
         far = 2.7 * lay["r_trunk"]
-        r_wrist = 0.34 * lay["r_trunk"]
+        r_wrist = 0.38 * lay["r_trunk"]
     else:
         z0 = lay["z_mount"] + 0.08 * (lay["z_pad"] - lay["z_mount"])
         far = 0.66 * lay["d"]                    # clear of the petals
-        r_wrist = max(3.8, 0.052 * lay["d"])
+        r_wrist = max(4.2, 0.060 * lay["d"])
     r_fist = _FIST * r_wrist
 
     # Two things want the climb, and they pull opposite ways: reaching out
@@ -385,24 +416,51 @@ def arm_path(p: PotParams, lay: dict, side: int, climb_scale: float = 1.0):
     reach = min(far, r0 + budget * climb / _EASE)
     span = max(reach - r0, 6.0)
 
-    n = 24
-    r_sh = _SHOULDER * r_wrist
+    # The shoulder only has to clear the head's *tab*; the fist has to clear
+    # the head itself, and it is twice as fat.  So the arm keeps drifting
+    # backwards as it climbs - and that drift is lateral slope like any
+    # other, so it comes out of the same budget as the reach.
     back = lay["y_back"]
-    path, radii = [], []
-    for i in range(n + 1):
-        t = i / n
-        shape = t - (_EASE - 1.0) * math.sin(2.0 * math.pi * t) / (2.0 * math.pi)
-        path.append(np.array([side * (r0 + span * min(max(shape, 0.0), 1.0)),
-                              -back - 0.08 * span * math.sin(math.pi * t),
-                              z0 + climb * t]))
-        radii.append(r_sh + (r_wrist - r_sh) * t)
+    deep = 0.5 * lay["thick"] + _FIST * r_wrist + 2.0
+    extra = 0.0 if cactus else max(0.0, deep - back)
 
+    def walk(span: float):
+        n = 24
+        r_sh = _SHOULDER * r_wrist
+        path, radii = [], []
+        for i in range(n + 1):
+            t = i / n
+            shape = t - (_EASE - 1.0) * math.sin(2.0 * math.pi * t) / (2.0 * math.pi)
+            path.append(np.array([
+                side * (r0 + span * min(max(shape, 0.0), 1.0)),
+                -back - extra * t * t - 0.08 * span * math.sin(math.pi * t),
+                z0 + climb * t]))
+            radii.append(r_sh + (r_wrist - r_sh) * t)
+        return path, radii
+
+    def steepest(path) -> float:
+        worst = 0.0
+        for a, b in zip(path, path[1:]):
+            dz = b[2] - a[2]
+            if dz > 1e-9:
+                worst = max(worst, float(np.hypot(b[0] - a[0], b[1] - a[1])) / dz)
+        return worst
+
+    path, radii = walk(span)
+    for _ in range(4):                           # pay for the drift in reach
+        lean = steepest(path)
+        if lean <= budget:
+            break
+        span *= budget / lean
+        path, radii = walk(span)
+
+    n = len(path) - 1
     wrist = 0.55 * r_wrist                       # straight, to spend the lean
     for j in (0.5, 1.0):
         path.append(path[n] + np.array([0.0, 0.0, wrist * j]))
         radii.append(r_wrist)
 
-    swell, dome = 1.9 * r_wrist, 1.05 * r_fist   # the fist
+    swell, dome = 2.2 * r_wrist, 1.05 * r_fist   # the fist
     base = path[-1]
     m = 8
     for j in range(1, m + 1):
@@ -436,17 +494,86 @@ def arm_max_slope(p: PotParams, lay: dict, side: int = 1,
     return worst
 
 
+def fist_radius_at(r_fist: float, drop: float) -> float:
+    """Radius of the fist ``drop`` fist-radii below its very top.
+
+    The top of a fist is the dome the ring stack closes with, so anything
+    stuck to it is being placed against a sphere, not a cylinder: put four
+    knuckles at one fixed distance from the axis and the outer two float
+    off the side of the hand.
+    """
+    dome = 1.05
+    if drop <= dome:
+        return r_fist * math.sqrt(max(1.0 - ((dome - drop) / dome) ** 2, 0.0))
+    return max(r_fist - 0.711 * (drop - dome) * r_fist, 0.05)
+
+
+def _knuckle(p: PotParams, r: float, cx: float, cy: float, z: float,
+             theta: float, ring: float) -> trimesh.Trimesh:
+    """A curled finger: a lobe sunk into the front of the fist.
+
+    The same teardrop as the hand itself, small and mostly buried, so the
+    only part of it in the open is the 52 degree cone underneath - which is
+    what a knuckle wants to look like anyway.
+    """
+    lobe = _teardrop(p, r)
+    lobe.apply_translation((cx + ring * math.sin(theta),
+                            cy + ring * math.cos(theta), z))
+    return lobe
+
+
+def _thumb(p: PotParams, pose: str, r_fist: float, cx: float, cy: float,
+           top: float, side: int) -> trimesh.Trimesh:
+    """A thumb: shorter, thicker, and off the *side* of the fist.
+
+    Which is the whole reason a thumbs-up reads as one.  With the other
+    four fingers unaccounted for and this coming off the top, a thumbs-up
+    and a raised middle finger are the same tube on the same ball.
+    """
+    t = _THUMB[pose]
+    if t.get("lobe"):
+        return _knuckle(p, t["r"] * r_fist, cx, cy,
+                        top - t["drop"] * r_fist,
+                        side * math.radians(t["angle"]),
+                        0.86 * fist_radius_at(r_fist, t["drop"]))
+    base = np.array([cx + side * t["out"] * r_fist,
+                     cy + t["front"] * r_fist, top - t["drop"] * r_fist])
+    return _finger(base, t["length"] * r_fist, t["r"] * r_fist,
+                   side * max(-_ARM_SLOPE, min(_ARM_SLOPE, t["lean"])))
+
+
 def _hand(p: PotParams, path, r_wrist: float, gesture: str,
           side: int) -> list[trimesh.Trimesh]:
-    """Fingers, standing on the fist the arm already swelled into."""
+    """Four fingers and a thumb, on the fist the arm already swelled into.
+
+    Every station is accounted for: the raised ones become tubes off the
+    top, the rest become knuckles round the front.  Three curled and one up
+    is unmistakable; a bare ball with one tube on it is not.
+    """
+    spec = _HAND.get(gesture)
+    if spec is None:
+        return []
     r_fist = _FIST * r_wrist
-    top = path[-1][2] - 0.75 * 1.05 * r_fist     # inside the dome
-    out = []
-    for off, scale in _HAND.get(gesture, []):
-        base = np.array([path[-1][0] + side * off * r_fist * 0.68,
-                         path[-1][1], top])
-        out.append(_finger(base, scale * 2.9 * r_fist, 0.44 * r_fist,
-                           side * off * 0.36))
+    cx, cy, top = path[-1][0], path[-1][1], path[-1][2]
+    seat = top - 0.79 * r_fist
+    r_finger = 0.235 * r_fist
+    splay = spec.get("splay", 0.0)
+    fat = spec.get("fat", 1.0)
+    ring = 0.95 * fist_radius_at(r_fist, _KNUCKLE_DROP)
+
+    out: list[trimesh.Trimesh] = []
+    for i in range(_STATIONS):
+        away = (i - 0.5 * (_STATIONS - 1)) / (0.5 * (_STATIONS - 1))
+        if i in spec["up"]:
+            out.append(_finger(
+                np.array([cx + side * away * 0.69 * r_fist, cy, seat]),
+                fat * 2.55 * r_fist, fat * r_finger, side * splay * away))
+        else:
+            out.append(_knuckle(p, _KNUCKLE_R * r_fist, cx, cy,
+                                top - _KNUCKLE_DROP * r_fist,
+                                side * away * math.radians(_KNUCKLE_SPREAD),
+                                ring))
+    out.append(_thumb(p, spec["thumb"], r_fist, cx, cy, top, side))
     return out
 
 

@@ -18,8 +18,9 @@ import trimesh
 from flowerpot import ParameterError, PotParams, audit
 from flowerpot.build import _boolean
 from flowerpot.yard import (FACES, GESTURES, PLANTS, _CARVE_RESERVE, _EASE,
-                            _lens, _rot2, arm_max_slope, arm_path,
-                            build_yard_body, build_yard_face, build_yard_head,
+                            _FIST, _HAND, _STATIONS, _hand, _lens, _rot2,
+                            arm_max_slope, arm_path, build_yard_body,
+                            build_yard_face, build_yard_head,
                             face_disc_radius, head_pose, lens_aspect, plan,
                             tab_depth)
 
@@ -182,3 +183,52 @@ def test_a_faceless_plant_is_allowed():
     p = _p(yard_face="none", yard_left_hand="none", yard_right_hand="none")
     assert p.validate() == []
     assert audit(build_yard_body(p), p.overhang_limit_deg).overhang_faces == 0
+
+
+# ---------------------------------------------------------------------------
+# a hand, not a ball with a spike on it
+# ---------------------------------------------------------------------------
+def _hand_only(p: PotParams, gesture: str, side: int = 1):
+    """The fingers and thumb on their own, posed where the arm ends."""
+    scale = 0.62 if gesture == "shrug" else 1.0
+    path, _radii, r_wrist = arm_path(p, plan(p), side, scale)
+    return path, r_wrist, trimesh.util.concatenate(
+        _hand(p, path, r_wrist, gesture, side))
+
+
+@pytest.mark.parametrize("gesture", [g for g in GESTURES if g != "none"])
+def test_every_finger_station_is_accounted_for(gesture):
+    """A gesture says which fingers go up; the rest have to go *somewhere*,
+    and where they go is curled onto the front of the fist.  Leave them out
+    and every one-finger gesture looks like every other one."""
+    spec = _HAND[gesture]
+    assert set(spec["up"]) <= set(range(_STATIONS))
+    _path, _rw, hand = _hand_only(_p(), gesture)
+    # four stations plus a thumb, whatever their pose
+    assert len(hand.split(only_watertight=False)) == _STATIONS + 1
+
+
+def test_a_thumbs_up_does_not_look_like_a_raised_middle_finger():
+    """The two are one tube on a ball unless the thumb comes off the *side*
+    and the other fingers are curled.  Measure where the highest point is."""
+    p = _p()
+    out = {}
+    for gesture in ("bird", "thumbs"):
+        path, r_wrist, hand = _hand_only(p, gesture)
+        top = hand.vertices[hand.vertices[:, 2].argmax()]
+        out[gesture] = abs(top[0] - path[-1][0]) / (_FIST * r_wrist)
+    assert out["bird"] < 0.45, out          # over the fist
+    assert out["thumbs"] > 0.75, out        # off the side of it
+
+
+def test_the_gestures_are_all_different_shapes():
+    p = _p()
+    seen = {}
+    for gesture in (g for g in GESTURES if g != "none"):
+        _path, _rw, hand = _hand_only(p, gesture)
+        # where it is as well as what it is: a shrug is the same hand as a
+        # wave, thrown lower
+        key = (round(hand.volume / 100.0), round(hand.extents[0] / 2.0),
+               round(hand.extents[2] / 2.0), round(hand.bounds[1][2] / 5.0))
+        assert key not in seen, f"{gesture} is the same shape as {seen[key]}"
+        seen[key] = gesture
