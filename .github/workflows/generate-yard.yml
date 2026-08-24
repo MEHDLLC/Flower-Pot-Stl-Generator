@@ -67,7 +67,7 @@ jobs:
         --yard-left-hand ${{ inputs.yard_left_hand }}
         --yard-right-hand ${{ inputs.yard_right_hand }}
         --hitch-mount ${{ inputs.hitch_mount }}
-        --hitch-ball "${{ inputs.hitch_ball }}"
+        --hitch-ball ${{ inputs.hitch_ball }}
         --yard-height ${{ inputs.yard_height }}
         --yard-head-diameter ${{ inputs.yard_head_diameter }}
         --color ${{ inputs.color }}

@@ -47,7 +47,7 @@ jobs:
       cli_args: >-
         --name hitch
         --hitch-mount ${{ inputs.hitch_mount }}
-        --hitch-ball "${{ inputs.hitch_ball }}"
+        --hitch-ball ${{ inputs.hitch_ball }}
         --hitch-grip ${{ inputs.hitch_grip }}
         --hitch-fingers ${{ inputs.hitch_fingers }}
         --wall-thickness ${{ inputs.wall_thickness }}

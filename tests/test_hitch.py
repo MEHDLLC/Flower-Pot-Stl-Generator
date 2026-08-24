@@ -199,6 +199,9 @@ def test_ball_sizes_and_guardrails():
     assert ball_diameter(PotParams(hitch_ball="54.0")) == pytest.approx(54.0)
     with pytest.raises(ParameterError, match="unknown hitch_ball"):
         ball_diameter(PotParams(hitch_ball="2 inch"))
+    # a form's value can reach the CLI with its quotes still attached
+    assert ball_diameter(PotParams(hitch_ball='"2"')) == pytest.approx(50.8)
+    assert ball_diameter(PotParams(hitch_ball="'2-5/16' ")) == pytest.approx(58.74)
     with pytest.raises(ParameterError, match="30-120"):
         ball_diameter(PotParams(hitch_ball="200"))
     with pytest.raises(ParameterError, match="unknown hitch_mount"):
