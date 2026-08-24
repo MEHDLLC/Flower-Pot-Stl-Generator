@@ -300,9 +300,33 @@ class PotParams:
     stack_pod_diameter: float = 70.0 # clip-on pod diameter for the stack
 
     # ------------------------------------------------------------------
+    # 5g. Yard art: a plant with a face and an opinion
+    # ------------------------------------------------------------------
+    yard_plant: str = "none"         # "sunflower" | "daisy" | "cactus".
+    #                                  The flowers come apart into three
+    #                                  prints - <name>_body (standing),
+    #                                  <name>_head (petals, flat) and
+    #                                  <name>_face (the middle, flat) - so
+    #                                  one printer gives you three colours.
+    #                                  A cactus is one standing piece.
+    yard_height: float = 200.0       # plate to the top of the head,
+    #                                  including whatever mount is under it
+    yard_head_diameter: float = 0.0  # 0 = sized from yard_height
+    yard_face: str = "angry"         # "angry" | "smug" | "grin" | "sideeye"
+    #                                  | "none"
+    yard_left_hand: str = "bird"     # "bird" | "fist" | "thumbs" | "peace"
+    yard_right_hand: str = "bird"    # | "horns" | "wave" | "shrug" | "none".
+    #                                  Mix them: one bird and one shrug.
+
+    # ------------------------------------------------------------------
     # 5f. Trailer-hitch ball mount
     # ------------------------------------------------------------------
-    hitch_mount: str = "none"        # "cover" writes a one-piece cover that
+    hitch_mount: str = "none"        # with yard_plant set: "fused" builds
+    #                                  the socket into the plant's base and
+    #                                  "screw" gives it a thread for the
+    #                                  collar; "none" puts it on a disc.
+    #                                  On its own:
+    #                                  "cover" writes a one-piece cover that
     #                                  snaps over a trailer ball; "screw"
     #                                  splits it into <name>_hitch_collar
     #                                  (the gripping socket, with a thread on
@@ -577,11 +601,25 @@ class PotParams:
                 "hydro_tower cannot combine with self_watering or "
                 "reservoir_insert - generate them separately"
             )
+        if self.yard_plant != "none":
+            from .yard import check_yard
+            warn += check_yard(self)
+            if self.self_watering or self.hydro_tower or self.bouquet \
+                    or self.stem or self.modular_kit != "none":
+                raise ParameterError(
+                    "yard_plant is its own object - it does not combine with "
+                    "the pots, the bouquet or the planted stem"
+                )
         if self.hitch_mount != "none":
-            if self.hitch_mount not in ("cover", "screw"):
+            if self.hitch_mount not in ("cover", "screw", "fused"):
                 raise ParameterError(
                     f"unknown hitch_mount {self.hitch_mount!r}; "
-                    f"choose from ['cover', 'screw']"
+                    f"choose from ['cover', 'screw', 'fused']"
+                )
+            if self.hitch_mount == "fused" and self.yard_plant == "none":
+                raise ParameterError(
+                    "hitch_mount 'fused' fuses the socket into a yard_plant; "
+                    "on its own use 'cover' or 'screw'"
                 )
             if not 3 <= self.hitch_fingers <= 9:
                 raise ParameterError("hitch_fingers should be 3-9")

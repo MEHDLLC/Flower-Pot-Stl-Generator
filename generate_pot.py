@@ -132,6 +132,18 @@ PARAMS = dict(
     #                            "creality-k1", "creality-ender3-v3-ke", or
     #                            "none" for a plain geometry-only 3MF
 
+    # -- yard art: a plant with a face and an opinion ------------------------
+    yard_plant="none",        # "sunflower" | "daisy" | "cactus".  The
+    #                           flowers come apart into <name>_body
+    #                           (standing), <name>_head (petals, flat) and
+    #                           <name>_face (the middle, flat) so a
+    #                           single-colour printer makes a 3-colour toy
+    yard_height=200.0,        # overall height, mount included
+    yard_head_diameter=0.0,   # 0 = sized from the room above the mount
+    yard_face="angry",        # "angry"|"smug"|"grin"|"sideeye"|"none"
+    yard_left_hand="bird",    # "bird"|"fist"|"thumbs"|"peace"|"horns"
+    yard_right_hand="bird",   # |"wave"|"shrug"|"none" - mix them
+
     # -- trailer hitch mount (snaps over a trailer ball) ---------------------
     hitch_mount="none",       # "cover" = one piece; "screw" = a gripping
     #                           collar plus a screw-on cap, so one collar

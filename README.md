@@ -78,6 +78,7 @@ pick the product — each has its own *Run workflow* form:
 | **Generate · bouquet planter** | a pot whose mouth is a ring of tulips or roses, each a planting pocket |
 | **Generate · vase** | six curvy silhouettes × any style × any texture, plus the planted stem (fused or screw-in) |
 | **Generate · trailer hitch mount** | a socket that snaps over a trailer ball, one piece or a screw-on collar |
+| **Generate · yard art** | a sunflower, daisy or saguaro with a face, two rude hands and a hitch mount |
 
 Anything not on a form goes in *extra_args* exactly as you would type it on the CLI.
 Every run uploads an artifact with the `.stl`, the colored `.3mf` and a `.png`
@@ -336,6 +337,74 @@ python -m flowerpot --bouquet --color blush
 python -m flowerpot --bouquet --bouquet-flower rose --bouquet-count 7 \
     --height 210 --top-diameter 130 --color clay
 ```
+
+## Yard art
+
+![yard art](docs/img/yard.png)
+
+`--yard-plant sunflower` grows a plant with a face and an opinion: a
+**sunflower**, a **daisy** or a **saguaro**, with eyes, eyebrows and two arms
+that can be told what to do with themselves. It snaps onto a trailer ball,
+screws onto the [collar](#trailer-hitch-mount), or stands on a plain disc.
+
+```bash
+python -m flowerpot --yard-plant sunflower --hitch-mount fused --hitch-ball 2
+python -m flowerpot --yard-plant cactus --yard-face smug \
+    --yard-left-hand bird --yard-right-hand shrug --hitch-mount screw
+python -m flowerpot --yard-plant daisy --hitch-mount none --yard-face grin
+```
+
+`yard_face` is `angry`, `smug`, `grin`, `sideeye` or `none`; `yard_left_hand`
+and `yard_right_hand` each take `bird`, `fist`, `thumbs`, `peace`, `horns`,
+`wave`, `shrug` or `none` — mix them freely, one bird and one shrug reads
+better than two of anything.
+
+### Why the flower comes apart
+
+![the three parts](docs/img/yard-parts.png)
+
+A flower head facing you is a **vertical disc**, and a vertical disc cannot
+print without supports however you slice it: the bottom of its rim faces
+straight down, and so does the underside of every petal that points sideways.
+Leaning it back far enough to fix that leaves the flower staring at the sky.
+
+So the head is its own part and it prints **lying flat, face up** — which turns
+the problem into the feature. Every bit of the face becomes a *top* surface,
+the best detail an FDM machine can produce and **zero** overhang, and the model
+splits along its own colour lines:
+
+| part | prints | colour |
+|---|---|---|
+| `<name>_body` | standing — mount, body, arms, hands | green |
+| `<name>_head` | flat, face up — the petal ring | yellow |
+| `<name>_face` | flat, face up — the seeded middle and the face | brown |
+
+Three prints on a single-material machine, no paint. The face disc presses into
+a pocket in the head; the head's tab drops into a slot in the body.
+
+### The rules the standing parts still obey
+
+* **An arm is a stack of horizontal rings drifting sideways as it climbs**, so
+  its underside lean is exactly its centreline's lateral slope — *plus* its
+  taper, because the two add. That is the real reason arms go up and out rather
+  than straight out: not style, arithmetic. The climb is solved first, from
+  where the hand should end up, and the reach is whatever the budget can buy
+  over it. Hands are teardrops and fingers are tubes for the same reason.
+* **The shoulders sit behind the head's plane.** The head's tab comes straight
+  down the middle of the body and the arms start near the middle too, so
+  without that they would be fighting over the same cubic centimetres. Setting
+  them back is also where a pair of arms belongs.
+* **Carving a standing wall has one rule, and it is stricter than it looks:**
+  every mark must be *much* taller than it is wide. A vesica's cusp — the
+  shallowest thing on it — closes at `arctan((b²−a²)/2ab)`, so at a 45° limit an
+  upright mark needs to be **2.4×** as tall as it is wide, and leaning it 10°
+  pushes that to **3.5×**. There is no angle that saves a long bar: tilting only
+  moves *which* end roofs itself. So the saguaro has no eyebrows. It scowls with
+  its eyes, and its mouth is a row of separate slits — gritted teeth, every one
+  of them legal.
+
+`yard_height` is the whole figure including its mount, and the head is sized
+from what is left above the mount, so a fused socket does not squash the plant.
 
 ## Trailer hitch mount
 
@@ -603,8 +672,12 @@ producing a broken mesh.
 `"insert"` push-in leaf plate written as `<name>_leaves.*`), `soil_cap` (removable
 raked-soil lid, written as `<name>_soil_cap.*`).
 
-**Hitch mount** — `hitch_mount` (`"none"` | `"cover"` | `"screw"`),
-`hitch_ball` (`"2"`), `hitch_fingers` (5), `hitch_grip` (1.1).
+**Hitch mount** — `hitch_mount` (`"none"` | `"cover"` | `"screw"` |
+`"fused"`), `hitch_ball` (`"2"`), `hitch_fingers` (5), `hitch_grip` (1.1).
+
+**Yard art** — `yard_plant` (`"sunflower"` | `"daisy"` | `"cactus"`),
+`yard_height` (200.0), `yard_head_diameter` (0.0 = auto), `yard_face`,
+`yard_left_hand`, `yard_right_hand`.
 
 **Bouquet** — `bouquet`, `bouquet_flower` (`"tulip"` | `"rose"`),
 `bouquet_count` (5), `bouquet_head_diameter` (0.0 = auto), `bouquet_tilt`

@@ -103,6 +103,15 @@ def export_pot(
             (build_hydro_cup, f"{name}_cup", False),
             (build_hydro_cap, f"{name}_cap", False),
         ]
+    elif params.yard_plant != "none":
+        from .yard import build_yard_body, build_yard_face, build_yard_head
+        jobs: list[tuple] = [(build_yard_body, f"{name}_body", True)]
+        if params.yard_plant != "cactus":
+            jobs += [(build_yard_head, f"{name}_head", False),
+                     (build_yard_face, f"{name}_face", False)]
+        if params.hitch_mount == "screw":
+            from .hitch import build_hitch_collar
+            jobs.append((build_hitch_collar, f"{name}_hitch_collar", False))
     elif params.hitch_mount == "cover":
         from .hitch import build_hitch_cover
         jobs: list[tuple] = [(build_hitch_cover, f"{name}_hitch_cover", True)]
