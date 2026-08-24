@@ -419,6 +419,25 @@ def yard_parts_figure(out: Path) -> None:
               out / "yard-parts.png", elev=34.0, azim=-90.0)
 
 
+def yard_hands_figure(out: Path) -> None:
+    import trimesh
+    from flowerpot.stem import _tube
+    from flowerpot.yard import GESTURES, _hand, arm_path, plan
+    p = PotParams(yard_plant="sunflower", hitch_mount="none", **FAST)
+    lay = plan(p)
+    cases = []
+    for g in (g for g in GESTURES if g != "none"):
+        scale = 0.62 if g == "shrug" else 1.0
+        path, radii, rw = arm_path(p, lay, 1, scale)
+        arm = trimesh.util.concatenate(
+            [_tube(path, radii, nt=44)] + _hand(p, path, rw, g, 1))
+        arm = arm.slice_plane(plane_origin=[0, 0, path[-1][2] - 7.0 * rw],
+                              plane_normal=[0, 0, 1], cap=True)
+        arm.apply_translation(-arm.bounds.mean(axis=0))
+        cases.append((g, arm, "sage"))
+    mesh_grid(cases, out / "yard-hands.png", elev=16.0, azim=-90.0)
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -445,6 +464,7 @@ def main(outdir: str = "docs/img") -> None:
     hitch_figure(out)
     yard_figure(out)
     yard_parts_figure(out)
+    yard_hands_figure(out)
 
 
 if __name__ == "__main__":

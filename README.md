@@ -359,6 +359,17 @@ and `yard_right_hand` each take `bird`, `fist`, `thumbs`, `peace`, `horns`,
 `wave`, `shrug` or `none` — mix them freely, one bird and one shrug reads
 better than two of anything.
 
+![the gestures](docs/img/yard-hands.png)
+
+The hand has **four finger stations and a thumb**, and every station is
+accounted for: the raised ones become tubes off the top of the fist, the rest
+curl into knuckles round its front. That is not decoration — leave the other
+fingers out and a thumbs-up and a raised middle finger are the same tube on the
+same ball. The thumb is what settles it, so it is shorter, thicker and comes
+off the *side*. A tucked thumb is a lobe rather than a tube, because a thumb
+lying across a closed fist is nearly horizontal and a nearly horizontal tube is
+a ceiling.
+
 ### Why the flower comes apart
 
 ![the three parts](docs/img/yard-parts.png)
