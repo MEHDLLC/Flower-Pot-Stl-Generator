@@ -1,0 +1,63 @@
+# Actions -> "Generate · self-watering pair" -> Run workflow.
+# A 6 in. round planter with an attached saucer, and the reservoir it drops
+# into.  The reservoir is sized from the pot, so the two rims finish flush.
+name: "Generate · self-watering pair"
+
+on:
+  workflow_dispatch:
+    inputs:
+      replica:
+        description: "What to write"
+        type: choice
+        default: set
+        options: [set, kyra, hdx]
+      replica_standoff:
+        description: "mm the pot is held above the water (0 = shop-bucket depth, no reservoir)"
+        type: string
+        default: "25"
+      replica_pot_top:
+        description: "Pot mouth diameter in mm (6.00 in = 152.4)"
+        type: string
+        default: "152.4"
+      replica_pot_base:
+        description: "Pot saucer diameter in mm (4.70 in = 119.38)"
+        type: string
+        default: "119.38"
+      replica_pot_height:
+        description: "Pot height in mm (5.51 in = 139.95)"
+        type: string
+        default: "139.95"
+      replica_plumbing:
+        description: "Ribs, overflow, fill notch and wick cup"
+        type: boolean
+        default: true
+      wall_thickness:
+        description: "Wall in mm"
+        type: string
+        default: "2.8"
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: clay
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  replica:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Self-watering pair: ${{ inputs.replica }}"
+      artifact: "replica-${{ inputs.replica }}"
+      cli_args: >-
+        --name planter
+        --replica ${{ inputs.replica }}
+        --replica-standoff ${{ inputs.replica_standoff }}
+        --replica-pot-top ${{ inputs.replica_pot_top }}
+        --replica-pot-base ${{ inputs.replica_pot_base }}
+        --replica-pot-height ${{ inputs.replica_pot_height }}
+        --${{ inputs.replica_plumbing == false && 'no-' || '' }}replica-plumbing
+        --wall-thickness ${{ inputs.wall_thickness }}
+        --color ${{ inputs.color }}
+        ${{ inputs.extra_args }}

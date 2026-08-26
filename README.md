@@ -79,6 +79,7 @@ pick the product — each has its own *Run workflow* form:
 | **Generate · vase** | six curvy silhouettes × any style × any texture, plus the planted stem (fused or screw-in) |
 | **Generate · trailer hitch mount** | a socket that snaps over a trailer ball, one piece or a screw-on collar |
 | **Generate · yard art** | a sunflower, daisy or saguaro with a face, two rude hands and a hitch mount |
+| **Generate · self-watering pair** | a 6 in. planter with an attached saucer, and the reservoir it drops into |
 
 Anything not on a form goes in *extra_args* exactly as you would type it on the CLI.
 Every run uploads an artifact with the `.stl`, the colored `.3mf` and a `.png`
@@ -337,6 +338,62 @@ python -m flowerpot --bouquet --color blush
 python -m flowerpot --bouquet --bouquet-flower rose --bouquet-count 7 \
     --height 210 --top-diameter 130 --color clay
 ```
+
+## Self-watering pair
+
+![the three parts](docs/img/replica.png)
+
+Two shop vessels and the pair they make: a **6 in. round planter with an
+attached saucer** (6.00 in. mouth, 4.70 in. saucer, 5.51 in. tall) and a
+**reservoir** in the manner of a 2.5 qt mixing bucket, sized so the pot drops
+into it and the two rims finish flush.
+
+```bash
+python -m flowerpot --replica set --color clay
+python -m flowerpot --replica set --replica-standoff 35    # more water
+python -m flowerpot --replica kyra --no-replica-plumbing   # the bare pot
+```
+
+`set` writes three parts — `<name>_pot`, `<name>_reservoir` and `<name>_wick`.
+`kyra` and `hdx` write one each. Every dimension of the pot is a parameter, so
+a tape measure beats the listing whenever one is to hand; the reservoir is
+always derived from whatever the pot ends up being, and there is a boolean fit
+proof in the tests to say so.
+
+![cut open](docs/img/replica-cut.png)
+
+### The trade you cannot dodge
+
+**Flush rims, a real reservoir, and the shop bucket's depth are three things
+you can have two of.** A pot resting on the floor of a 2.5 qt bucket leaves a
+couple of hundred millilitres in the gap around it at best; lifting it far
+enough to matter makes the bucket that much deeper than the one on the shelf.
+`replica_standoff` is that dial — 25 mm by default, which keeps the rims flush
+and holds about 215 ml. Set it to `0` for the bucket's own proportions and
+almost no water.
+
+### What a printer cannot copy
+
+The real pot's saucer is a **tray** — a moulded cavity under its floor. Printed
+standing up that cavity is a ceiling the full width of the pot, and no cone
+closes a 110 mm span. So the replica's saucer is a solid flared foot: the same
+silhouette from outside, no tray. The generator says so in a warning rather
+than quietly handing you something different from the photograph.
+
+### The plumbing
+
+* **Ribs** stand up off the reservoir's floor for the pot to land on. The
+  standoff has to come from *below* — a shelf moulded round the inside of the
+  wall would be a ledge facing straight down.
+* An **overflow** through the wall sets the water line a finger's width under
+  the pot's floor, so the soil never sits in water. It is a diamond port, not a
+  round hole: a round hole through a standing wall has a ceiling across its top.
+* A **notch** in the rim is what you pour through. The gap between the two rims
+  is a couple of millimetres, which no watering can will ever find.
+* The **wick cup** is its own part. It drops through the pot's floor and hangs
+  into the water; pack it with the same soil and it carries the water up. It is
+  separate because hanging it off the pot's floor would leave that floor
+  spanning the whole pot with nothing under it.
 
 ## Yard art
 
@@ -685,6 +742,10 @@ raked-soil lid, written as `<name>_soil_cap.*`).
 
 **Hitch mount** — `hitch_mount` (`"none"` | `"cover"` | `"screw"` |
 `"fused"`), `hitch_ball` (`"2"`), `hitch_fingers` (5), `hitch_grip` (1.1).
+
+**Self-watering pair** — `replica` (`"none"` | `"kyra"` | `"hdx"` | `"set"`),
+`replica_pot_top` (152.4), `replica_pot_base` (119.38), `replica_pot_height`
+(139.95), `replica_standoff` (25.0), `replica_plumbing` (True).
 
 **Yard art** — `yard_plant` (`"sunflower"` | `"daisy"` | `"cactus"`),
 `yard_height` (200.0), `yard_head_diameter` (0.0 = auto), `yard_face`,
