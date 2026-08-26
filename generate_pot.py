@@ -132,6 +132,19 @@ PARAMS = dict(
     #                            "creality-k1", "creality-ender3-v3-ke", or
     #                            "none" for a plain geometry-only 3MF
 
+    # -- self-watering pair (a planter and the reservoir it drops into) ------
+    replica="none",           # "kyra" the 6 in. planter with the attached
+    #                           saucer, "hdx" the reservoir it sits in,
+    #                           "set" both plus the wick cup between them
+    replica_pot_top=152.4,    # 6.00 in. mouth
+    replica_pot_base=119.38,  # 4.70 in. saucer
+    replica_pot_height=139.95,  # 5.51 in. tall
+    replica_standoff=25.0,    # mm the pot is held above the water.  Flush
+    #                           rims, a real reservoir and the shop bucket's
+    #                           depth are three things you can have two of;
+    #                           0 takes the bucket's depth and no water
+    replica_plumbing=True,    # ribs, overflow, fill notch and wick cup
+
     # -- yard art: a plant with a face and an opinion ------------------------
     yard_plant="none",        # "sunflower" | "daisy" | "cactus".  The
     #                           flowers come apart into <name>_body

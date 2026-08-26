@@ -319,6 +319,30 @@ class PotParams:
     #                                  Mix them: one bird and one shrug.
 
     # ------------------------------------------------------------------
+    # 5h. Shop-vessel replicas (a self-watering pair)
+    # ------------------------------------------------------------------
+    replica: str = "none"            # "kyra"  a 6 in. round planter with an
+    #                                  attached saucer; "hdx" the reservoir
+    #                                  it drops into, in the manner of a
+    #                                  2.5 qt mixing bucket; "set" both,
+    #                                  plus the wick cup that joins them.
+    replica_pot_top: float = 152.4   # 6.00 in. across the mouth
+    replica_pot_base: float = 119.38  # 4.70 in. across the saucer
+    replica_pot_height: float = 139.95  # 5.51 in. tall (the listing's
+    #                                  number; its own drawing says 7.32 -
+    #                                  5.51 is the one that sits flush in
+    #                                  the bucket)
+    replica_standoff: float = 25.0   # how far the pot is held above the
+    #                                  water.  This is the whole trade:
+    #                                  flush rims, a real reservoir and the
+    #                                  shop bucket's depth are three things
+    #                                  you can have two of.  0 gives the
+    #                                  bucket's proportions and no water.
+    replica_plumbing: bool = True    # ribs to stand the pot on, an overflow,
+    #                                  a notch to pour through and a wick
+    #                                  cup.  Off = the bare shapes.
+
+    # ------------------------------------------------------------------
     # 5f. Trailer-hitch ball mount
     # ------------------------------------------------------------------
     hitch_mount: str = "none"        # with yard_plant set: "fused" builds
@@ -601,6 +625,16 @@ class PotParams:
                 "hydro_tower cannot combine with self_watering or "
                 "reservoir_insert - generate them separately"
             )
+        if self.replica != "none":
+            from .replica import check_replica
+            warn += check_replica(self)
+            if (self.yard_plant != "none" or self.bouquet or self.stem
+                    or self.self_watering or self.hydro_tower
+                    or self.modular_kit != "none"):
+                raise ParameterError(
+                    "replica is its own object - it does not combine with "
+                    "the pots, the yard art or the other product flags"
+                )
         if self.yard_plant != "none":
             from .yard import check_yard
             warn += check_yard(self)

@@ -438,6 +438,28 @@ def yard_hands_figure(out: Path) -> None:
     mesh_grid(cases, out / "yard-hands.png", elev=16.0, azim=-90.0)
 
 
+def replica_figure(out: Path) -> None:
+    import trimesh
+    from flowerpot.replica import (build_replica_pot, build_replica_reservoir,
+                                   build_replica_wick, reservoir_plan,
+                                   seated_pot)
+    p = PotParams(replica="set", **FAST)
+    k = reservoir_plan(p)
+    cup = build_replica_wick(p)
+    cup.apply_translation((0.0, 0.0, k["floor"]))
+    whole = trimesh.util.concatenate(
+        [build_replica_reservoir(p), seated_pot(p), cup])
+    half = trimesh.intersections.slice_mesh_plane(
+        whole, plane_normal=[0, 1, 0], plane_origin=[0, 0, 0], cap=True)
+    mesh_grid([("the pot", build_replica_pot(p), "clay"),
+               ("the reservoir", build_replica_reservoir(p), "white"),
+               ("the wick cup", build_replica_wick(p), "sage")],
+              out / "replica.png", elev=16.0, azim=-60.0)
+    mesh_grid([("cut open: the pot on its ribs, the wick in the water",
+                half, "sand")],
+              out / "replica-cut.png", elev=5.0, azim=-90.0)
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -465,6 +487,7 @@ def main(outdir: str = "docs/img") -> None:
     yard_figure(out)
     yard_parts_figure(out)
     yard_hands_figure(out)
+    replica_figure(out)
 
 
 if __name__ == "__main__":
