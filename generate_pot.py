@@ -145,6 +145,24 @@ PARAMS = dict(
     #                           0 takes the bucket's depth and no water
     replica_plumbing=True,    # ribs, overflow, fill notch and wick cup
 
+    # -- dish and keel (a pot that sits in a dish and drinks out of it) ------
+    cradle="none",            # "set" writes both parts, "pot" or "dish" one
+    #                           of them.  The pot's bottom is a cone - a keel
+    #                           - hanging into the dish's water, slotted so
+    #                           the soil can wick it back up
+    cradle_diameter=120.0,    # outside diameter at the joint
+    cradle_height=108.0,      # assembled height, plate to the pot's lip
+    cradle_dish_height=44.0,  # the dish's share of it
+    cradle_keel=26.0,         # how far the keel hangs below the joint
+    cradle_bowl="round",      # "round" | "cone" | "tub" - the dish's
+    #                           silhouette, and the water dial with it:
+    #                           tub holds the most, cone the least
+    cradle_flare=1.5,         # how much wider the mouth is than the joint
+    cradle_windows=1,         # notches in the dish's rim to pour through;
+    #                           they are the overflow as well as the inlet
+    cradle_drains=8,          # wicking slots up the keel; 0 = a cachepot
+    cradle_lip=True,          # a rolled lip round the pot's mouth
+
     # -- yard art: a plant with a face and an opinion ------------------------
     yard_plant="none",        # "sunflower" | "daisy" | "cactus".  The
     #                           flowers come apart into <name>_body

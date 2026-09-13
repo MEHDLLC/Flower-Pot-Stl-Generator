@@ -1,0 +1,79 @@
+# Actions -> "Generate · dish and keel" -> Run workflow.
+# A pot whose bottom is a cone hanging into a solid dish of water, and the
+# dish it hangs in.  Both print standing up with no supports.
+name: "Generate · dish and keel"
+
+on:
+  workflow_dispatch:
+    inputs:
+      cradle:
+        description: "What to write"
+        type: choice
+        default: set
+        options: [set, pot, dish]
+      cradle_diameter:
+        description: "Diameter at the joint in mm (the dish's widest point)"
+        type: string
+        default: "120"
+      cradle_height:
+        description: "Assembled height in mm, plate to the pot's lip"
+        type: string
+        default: "108"
+      cradle_dish_height:
+        description: "The dish's share of that height in mm"
+        type: string
+        default: "44"
+      cradle_keel:
+        description: "mm the pot's keel hangs below the joint"
+        type: string
+        default: "26"
+      cradle_bowl:
+        description: "Dish silhouette (tub holds the most water, cone the least)"
+        type: choice
+        default: round
+        options: [round, cone, tub]
+      cradle_windows:
+        description: "Fill notches in the dish's rim (0-4)"
+        type: string
+        default: "1"
+      cradle_drains:
+        description: "Wicking slots up the keel (0 closes it)"
+        type: string
+        default: "8"
+      cradle_lip:
+        description: "A rolled lip round the pot's mouth"
+        type: boolean
+        default: true
+      wall_thickness:
+        description: "Wall in mm"
+        type: string
+        default: "3.0"
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: clay
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  cradle:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Dish and keel: ${{ inputs.cradle }}"
+      artifact: "cradle-${{ inputs.cradle }}"
+      cli_args: >-
+        --name planter
+        --cradle ${{ inputs.cradle }}
+        --cradle-diameter ${{ inputs.cradle_diameter }}
+        --cradle-height ${{ inputs.cradle_height }}
+        --cradle-dish-height ${{ inputs.cradle_dish_height }}
+        --cradle-keel ${{ inputs.cradle_keel }}
+        --cradle-bowl ${{ inputs.cradle_bowl }}
+        --cradle-windows ${{ inputs.cradle_windows }}
+        --cradle-drains ${{ inputs.cradle_drains }}
+        --${{ inputs.cradle_lip == false && 'no-' || '' }}cradle-lip
+        --wall-thickness ${{ inputs.wall_thickness }}
+        --color ${{ inputs.color }}
+        ${{ inputs.extra_args }}
