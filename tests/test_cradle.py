@@ -16,10 +16,11 @@ import pytest
 import trimesh
 
 from flowerpot import ParameterError, PotParams, audit
-from flowerpot.build import _boolean
-from flowerpot.cradle import (BOWLS, _SEAT_CLEAR, bowl_radius, build_cradle_dish,
-                              build_cradle_pot, keel_radius, plan, seated_pot,
-                              water_gap, water_millilitres)
+from flowerpot.build import _boolean, lathe
+from flowerpot.cradle import (BOWLS, _SEAT_CLEAR, _WINDOW_WIDE, _round_section,
+                              bowl_radius, build_cradle_dish, build_cradle_pot,
+                              keel_radius, plan, seated_pot, water_gap,
+                              water_millilitres)
 from flowerpot.profile import slope_budget
 
 FAST = dict(segments=96)
@@ -29,6 +30,44 @@ def _p(**kw) -> PotParams:
     base = dict(cradle="set", **FAST)
     base.update(kw)
     return PotParams(**base)
+
+
+def _channel(p: PotParams, turn: float = 0.0) -> trimesh.Trimesh:
+    """A solid filling the route a jug of water has to take: in at the fill
+    notch, then down the gap between the keel and the bowl.
+
+    Built as one connected piece, so proving that neither part touches it
+    proves the route is open end to end.  It is a solid rather than a set of
+    sample points because ``contains`` wants an r-tree, and the exact
+    boolean kernel is already a hard dependency here.
+    """
+    k = plan(p)
+    sec = _round_section(p)
+    lo, sill, hi = k["z_pad"] + 1.0, k["z_brim"], k["z_dish"] - 1.0
+    keep = 0.6                                   # stay off both surfaces
+
+    z = np.linspace(lo, sill, 33)
+    deep = _boolean("difference", [
+        lathe([(bowl_radius(k, v) - keep, float(v)) for v in z], sec, False),
+        lathe([(keel_radius(k, v) + keep, float(v)) for v in z], sec, False)])
+
+    # up through the notch: below its sill the bowl still has a wall, so the
+    # probe stays inside it there and only opens out above - and the two
+    # pieces share that band, which is what makes the whole thing one body
+    below = [(bowl_radius(k, float(v)) - keep, float(v))
+             for v in np.linspace(sill - 2.0, sill, 5)]
+    above = [(k["r_rim"] + 6.0, float(v))
+             for v in np.linspace(sill + 0.15, hi, 13)]
+    inner = [(keel_radius(k, r_z[1]) + keep, r_z[1]) for r_z in below + above]
+    mouth = _boolean("difference", [lathe(below + above, sec, False),
+                                    lathe(inner, sec, False)])
+    half = 0.7 * _WINDOW_WIDE * k["r_rim"]       # inside the notch, with room
+    reach = k["r_rim"] + 8.0
+    wedge = trimesh.creation.box(extents=(reach, 2.0 * half, 4.0 * hi))
+    wedge.apply_translation((0.5 * reach, 0.0, 0.0))
+    wedge.apply_transform(
+        trimesh.transformations.rotation_matrix(turn, [0, 0, 1]))
+    return _boolean("union", [deep, _boolean("intersection", [mouth, wedge])])
 
 
 # ---------------------------------------------------------------------------
@@ -109,23 +148,29 @@ def test_the_seat_is_one_cone_with_the_fit_left_on_it():
 # can you water it?
 # ---------------------------------------------------------------------------
 def test_the_fill_notch_opens_onto_the_water():
-    """Straight at the notch there is nothing between the outside air and
-    the gap the water sits in; a quarter turn away the rim is still a rim."""
+    """Fill the route with a solid and see whether either part is standing
+    in it: from outside the dish, in through the notch, and down the gap to
+    below the water line without touching pot or dish anywhere."""
     p = _p(cradle_windows=1)
     k = plan(p)
-    pot, dish = seated_pot(p), build_cradle_dish(p)
-    z = k["z_dish"] - 5.0
-    r = np.linspace(keel_radius(k, z) + 1.0, k["r_rim"] + 6.0, 25)
-    through = np.column_stack([r, np.zeros_like(r), np.full_like(r, z)])
-    assert not pot.contains(through).any()
-    assert not dish.contains(through).any()
-    away = np.column_stack([-r, np.zeros_like(r), np.full_like(r, z)])
-    assert dish.contains(away).sum() >= 3, "the notch took the whole rim"
-    # ... and the way down from there is clear all the way to the floor
-    for zz in (k["z_brim"] - 1.0, k["z_fill"], k["z_pad"] + 2.0):
-        mid = np.array([[0.5 * (keel_radius(k, zz) + bowl_radius(k, zz)),
-                         0.0, zz]])
-        assert not pot.contains(mid)[0] and not dish.contains(mid)[0]
+    route = _channel(p)
+    assert len(route.split(only_watertight=False)) == 1, "not one channel"
+    assert route.bounds[1][0] > k["r_rim"] + 1.0        # starts outside
+    assert route.bounds[0][2] < k["z_fill"]             # ends under water
+    for part in (seated_pot(p), build_cradle_dish(p)):
+        assert _boolean("intersection", [route, part]).volume < 1.0
+
+
+def test_a_quarter_turn_away_the_rim_is_still_a_rim():
+    """The same route, rotated off the notch, has to run into the dish -
+    otherwise the notch is not a notch, it is a missing rim."""
+    p = _p(cradle_windows=1)
+    dish = build_cradle_dish(p)
+    assert _boolean("intersection", [_channel(p, math.pi / 2.0), dish]).volume > 20.0
+    # ... and with no notch at all there is no way in anywhere
+    q = _p(cradle_windows=0)
+    assert _boolean("intersection",
+                    [_channel(q), build_cradle_dish(q)]).volume > 20.0
 
 
 @pytest.mark.parametrize("n,loops", [(0, 2), (1, 1), (2, 2), (3, 3)])
