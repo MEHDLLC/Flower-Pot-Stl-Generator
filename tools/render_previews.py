@@ -460,6 +460,30 @@ def replica_figure(out: Path) -> None:
               out / "replica-cut.png", elev=5.0, azim=-90.0)
 
 
+def cradle_figure(out: Path) -> None:
+    import trimesh
+    from flowerpot.cradle import (BOWLS, build_cradle_dish, build_cradle_pot,
+                                  seated_pot)
+    p = PotParams(cradle="set", **FAST)
+    whole = trimesh.util.concatenate([seated_pot(p), build_cradle_dish(p)])
+    half = trimesh.intersections.slice_mesh_plane(
+        whole, plane_normal=[0, 1, 0], plane_origin=[0, 0, 0], cap=True)
+    mesh_grid([("assembled", whole, "clay"),
+               ("the pot, on its keel", build_cradle_pot(p), "clay"),
+               ("the dish", build_cradle_dish(p), "sage")],
+              out / "cradle.png", elev=14.0, azim=-62.0)
+    mesh_grid([("cut open: the keel in the water, the notch at the seam",
+                half, "sand")],
+              out / "cradle-cut.png", elev=4.0, azim=-90.0)
+    from flowerpot.cradle import water_millilitres
+    bowls = []
+    for b in BOWLS:
+        q = PotParams(cradle="set", cradle_bowl=b, **FAST)
+        bowls.append((f"{b}: {water_millilitres(q):.0f} ml",
+                      build_cradle_dish(q), "teal"))
+    mesh_grid(bowls, out / "cradle-bowls.png", elev=16.0, azim=-62.0)
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -488,6 +512,7 @@ def main(outdir: str = "docs/img") -> None:
     yard_parts_figure(out)
     yard_hands_figure(out)
     replica_figure(out)
+    cradle_figure(out)
 
 
 if __name__ == "__main__":

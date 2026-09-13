@@ -395,6 +395,86 @@ than quietly handing you something different from the photograph.
   separate because hanging it off the pot's floor would leave that floor
   spanning the whole pot with nothing under it.
 
+## Dish and keel
+
+![the pair](docs/img/cradle.png)
+
+A pot that sits in a dish and drinks out of it. Two parts, no hardware, no
+rope, nothing to buy: the **dish** is a solid bowl that holds the water, and
+the **pot**'s bottom is not a floor but a **keel** — a cone that hangs down
+inside the dish and dips into it. Slots up the keel put the soil in touch with
+the water, so the column wicks and the pot waters itself for a week at a time.
+
+```bash
+python -m flowerpot --cradle set --color clay
+python -m flowerpot --cradle set --cradle-bowl tub        # more water
+python -m flowerpot --cradle set --cradle-diameter 160 --cradle-height 140
+python -m flowerpot --cradle dish --cradle-windows 3      # just the dish
+```
+
+`set` writes `<name>_pot` and `<name>_dish`; `pot` and `dish` write one each.
+Every dimension is a parameter and the two parts are solved together, so the
+pair still nests at any size — there is a boolean fit proof in the tests to say
+so.
+
+![cut open](docs/img/cradle-cut.png)
+
+### The seat
+
+The pot lands on the dish's rim by a **cone seat**: the underside of the pot's
+collar and the top of the dish's rim are the *same cone*, so the pot centres
+itself on the way down and cannot be put on crooked. It is left 0.25 mm loose
+on the perpendicular — two printed cones never mate on their nominal surfaces,
+and a pot that lands on one high spot rocks. Drop the pot a millimetre in the
+tests and the seat is what stops it; that is what makes it a seat rather than a
+pot hanging in a hole.
+
+That one cone sets everything else. It is the keel, because a keel at the
+overhang limit is the deepest one that fits under a given rim; the rim is the
+keel, because that is what it lands on; and the bowl has to be shallower than
+both, which is why the water gap can only open up as it goes down. Change
+`overhang_limit_deg` and the whole pair re-solves.
+
+### What a printer cannot copy
+
+![the three bowls](docs/img/cradle-bowls.png)
+
+A dish shaped like a real bowl — round bottom, walls rising to vertical — is a
+90° overhang at its pole and 60° round its flanks. It is the one part of the
+shape a support-free print cannot have. Ours flares the other way: it stands on
+a flat foot and opens **outwards** all the way to the rim, never past the
+budget. `cradle_bowl` picks how hard, and that is also the water dial:
+
+| `cradle_bowl` | Foot | Holds | Reads as |
+|---|---|---|---|
+| `round` | wide | ~145 ml | a circular arc that leaves the foot at exactly the limit and is vertical by the rim — the closest a support-free bowl gets to a bowl |
+| `cone` | narrow | ~77 ml | a straight flare, the most dramatic silhouette and the least water |
+| `tub` | widest | ~158 ml | nearly straight sides, the most water |
+
+### Where the water goes in
+
+Through a **notch in the dish's rim**, not through the pot. At the joint the
+pot's skirt is one wall thick with the soil right behind it, so a hole there
+empties the pot; the dish's rim has nothing above it at all, so a notch cut down
+into it has no roof to hold up and every face it leaves is vertical or pointing
+at the ceiling. Assembled, the two read as the same thing — a gap at the seam,
+with the pot's keel sloping down over it and carrying whatever you pour straight
+into the water.
+
+The dish stays **solid**: no port, no grommet, nothing below its rim to leak.
+The notch is the overflow as well as the inlet — fill until it runs back out at
+you, and the level is set to the millimetre by where the notch's sill was cut,
+a comfortable margin above the top of the wicking slots.
+
+### The slots
+
+The wicking slots are cut **straight down**. A vertical cut is the one cut that
+can never leave an overhang: every face it makes is a vertical plane or a
+vertical cylinder. Through a 42° keel that reads as a slit running up the cone,
+which is exactly where it needs to be — the soil has to touch the water. Set
+`cradle_drains 0` to close the keel and get a cachepot instead; the generator
+says so rather than quietly handing you a pot that will not drink.
+
 ## Yard art
 
 ![yard art](docs/img/yard.png)
@@ -747,6 +827,12 @@ raked-soil lid, written as `<name>_soil_cap.*`).
 `replica_pot_top` (152.4), `replica_pot_base` (119.38), `replica_pot_height`
 (139.95), `replica_standoff` (25.0), `replica_plumbing` (True).
 
+**Dish and keel** — `cradle` (`"none"` | `"set"` | `"pot"` | `"dish"`),
+`cradle_diameter` (120.0 at the joint), `cradle_height` (108.0 assembled),
+`cradle_dish_height` (44.0), `cradle_keel` (26.0), `cradle_bowl` (`"round"` |
+`"cone"` | `"tub"`), `cradle_flare` (1.5), `cradle_windows` (1),
+`cradle_drains` (8), `cradle_lip` (True).
+
 **Yard art** — `yard_plant` (`"sunflower"` | `"daisy"` | `"cactus"`),
 `yard_height` (200.0), `yard_head_diameter` (0.0 = auto), `yard_face`,
 `yard_left_hand`, `yard_right_hand`.
@@ -854,6 +940,8 @@ flowerpot/
   jar.py        the mason-jar greenhouse seat and collar ring
   stem.py       the planted-flower stem and its lens leaves
   modular.py    the dovetail standard + seed cubes, flower set, rotating stack
+  replica.py    the shop-vessel pair (planter + reservoir + wick cup)
+  cradle.py     the dish-and-keel pair (a pot that drinks out of its dish)
   colors.py     the palette and hex parsing
   printers.py   machine profiles + the slicer project payload
   threemf.py    minimal colored-3MF writer (thumbnail + project settings)
@@ -863,7 +951,7 @@ flowerpot/
 generate_pot.py the edit-and-run script
 .github/        the "Generate flower pot" workflow + CI
 tools/          docs image renderer
-tests/          61 regression tests
+tests/          the regression suite
 ```
 
 ## Tests

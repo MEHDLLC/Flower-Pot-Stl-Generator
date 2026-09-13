@@ -343,6 +343,36 @@ class PotParams:
     #                                  cup.  Off = the bare shapes.
 
     # ------------------------------------------------------------------
+    # 5i. Dish-and-keel pair (a pot that sits in a bowl and drinks from it)
+    # ------------------------------------------------------------------
+    cradle: str = "none"             # "set" writes both parts, "pot" or
+    #                                  "dish" one of them.  The pot's bottom
+    #                                  is a cone - a keel - that hangs into
+    #                                  the dish's water; slots up the keel
+    #                                  let the soil wick it back up.
+    cradle_diameter: float = 120.0   # outside diameter at the joint, which
+    #                                  is the dish's widest point.  The pot's
+    #                                  lip stands cradle_flare + 3 mm proud
+    #                                  of it.
+    cradle_height: float = 108.0     # assembled height, plate to the lip
+    cradle_dish_height: float = 44.0 # the dish's share of it - and so how
+    #                                  deep the reservoir can be
+    cradle_keel: float = 26.0        # how far the pot's keel hangs below the
+    #                                  joint.  Deeper = a narrower pad to
+    #                                  print on, since the keel falls at the
+    #                                  overhang limit.
+    cradle_bowl: str = "round"       # "round" | "cone" | "tub" - the dish's
+    #                                  silhouette, and with it how much water
+    #                                  it holds: tub the most, cone the least,
+    #                                  round the most like a dish.
+    cradle_flare: float = 1.5        # how much wider the pot's mouth is than
+    #                                  the joint, per side
+    cradle_windows: int = 1          # notches in the dish's rim to pour
+    #                                  through; 0-4
+    cradle_drains: int = 8           # wicking slots up the keel; 0 closes it
+    cradle_lip: bool = True          # a rolled lip round the pot's mouth
+
+    # ------------------------------------------------------------------
     # 5f. Trailer-hitch ball mount
     # ------------------------------------------------------------------
     hitch_mount: str = "none"        # with yard_plant set: "fused" builds
@@ -635,6 +665,16 @@ class PotParams:
                     "replica is its own object - it does not combine with "
                     "the pots, the yard art or the other product flags"
                 )
+        if self.cradle != "none":
+            from .cradle import check_cradle
+            warn += check_cradle(self)
+            if (self.replica != "none" or self.yard_plant != "none"
+                    or self.bouquet or self.stem or self.self_watering
+                    or self.hydro_tower or self.reservoir_insert
+                    or self.modular_kit != "none"):
+                raise ParameterError(
+                    "cradle is its own pair - it does not combine with the "
+                    "pots, the yard art or the other product flags")
         if self.yard_plant != "none":
             from .yard import check_yard
             warn += check_yard(self)

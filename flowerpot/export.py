@@ -67,7 +67,9 @@ def export_pot(
                       "texture_cell", "rib_depth", "hex_corner_round",
                       "reservoir_height", "saucer_height",
                       "replica_pot_top", "replica_pot_base",
-                      "replica_pot_height", "replica_standoff")})
+                      "replica_pot_height", "replica_standoff",
+                      "cradle_diameter", "cradle_height",
+                      "cradle_dish_height", "cradle_keel", "cradle_flare")})
 
     for warning in params.validate():
         print(f"  WARN {warning}", file=sys.stderr)
@@ -117,6 +119,13 @@ def export_pot(
         from .replica import wants_wick
         if params.replica == "set" and wants_wick(params):
             jobs.append((build_replica_wick, f"{name}_wick", False))
+    elif params.cradle != "none":
+        from .cradle import build_cradle_dish, build_cradle_pot
+        jobs: list[tuple] = []
+        if params.cradle in ("pot", "set"):
+            jobs.append((build_cradle_pot, f"{name}_pot", True))
+        if params.cradle in ("dish", "set"):
+            jobs.append((build_cradle_dish, f"{name}_dish", not jobs))
     elif params.yard_plant != "none":
         from .yard import build_yard_body, build_yard_face, build_yard_head
         jobs: list[tuple] = [(build_yard_body, f"{name}_body", True)]
