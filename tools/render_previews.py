@@ -523,6 +523,24 @@ def underpot_figure(out: Path) -> None:
               out / "underpot.png", elev=26.0, azim=-58.0)
 
 
+def sleeve_figure(out: Path) -> None:
+    import trimesh
+    from flowerpot.sleeve import build_sleeve
+    cases = []
+    for kw, col in ((dict(), "clay"), (dict(pot_style="hexagonal"), "sage"),
+                    (dict(surface_texture="honeycomb"), "teal")):
+        q = PotParams(sleeve=True, **FAST, **kw)
+        label = "plain" if not kw else " ".join(str(v) for v in kw.values())
+        cases.append((label, build_sleeve(q), col))
+    mesh_grid(cases, out / "sleeve.png", elev=16.0, azim=-58.0)
+    half = trimesh.intersections.slice_mesh_plane(
+        build_sleeve(PotParams(sleeve=True, **FAST)),
+        plane_normal=[0, 1, 0], plane_origin=[0, 0, 0], cap=True)
+    mesh_grid([("cut open: the step the pot lands on, and the well under it",
+                half, "sand")],
+              out / "sleeve-cut.png", elev=6.0, azim=-90.0)
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -554,6 +572,7 @@ def main(outdir: str = "docs/img") -> None:
     cradle_figure(out)
     mosspole_figure(out)
     underpot_figure(out)
+    sleeve_figure(out)
 
 
 if __name__ == "__main__":

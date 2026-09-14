@@ -395,6 +395,75 @@ than quietly handing you something different from the photograph.
   separate because hanging it off the pot's floor would leave that floor
   spanning the whole pot with nothing under it.
 
+## Nursery sleeve
+
+![three sleeves](docs/img/sleeve.png)
+
+A cover for the pot the plant came in. Nobody wants to look at a black plastic
+nursery pot, and nobody wants to repot a plant that has just been moved — the
+pot drops in, pot and all, and what shows is the sleeve.
+
+```bash
+python -m flowerpot --sleeve --sleeve-pot-size 6in --color clay
+python -m flowerpot --sleeve --sleeve-pot-size 6in --pot-style hexagonal
+python -m flowerpot --sleeve --sleeve-pot-top 130 --sleeve-pot-base 100 \
+                    --sleeve-pot-height 118 --surface-texture honeycomb
+```
+
+**A sleeve is a pot.** That is the whole design: its outside is built by the
+same machinery as every other pot here, so `pot_style`, `surface_texture`, the
+rim and the colours all work on it exactly as they do on a planter. Only the
+inside is different, and the inside is not a design at all — it is the nursery
+pot, plus a fit.
+
+![cut open](docs/img/sleeve-cut.png)
+
+### The step, and the well under it
+
+The cavity is a **step**: a straight well at the bottom, narrower than the
+nursery pot's base, and the pot's space above it. The pot lands on the step and
+the well is left under it.
+
+A step in a cavity is usually a ceiling — but not this one. Going up, this
+cavity only gets *wider* (well, then step, then the pot's own taper), so the
+step faces the sky and the whole inside prints as wall. It is the cavities that
+narrow going up that need a cone.
+
+The well is what a cachepot is usually missing: somewhere for a drink to go
+that is not the bottom of the pot. There is no drain, so what it holds is also
+all it can hold — the generator reports the number, and `sleeve_well 0` is
+allowed but argued with.
+
+### What a sleeve cannot be
+
+`vase_profile` is **refused** on a sleeve. Every one of those silhouettes necks
+in at the mouth *and* narrows at the foot, and a sleeve has a pot inside it and
+a well under it; there is nothing to negotiate, so it says so rather than
+half-working.
+
+Anything else that closes in on the pot — a narrow `sleeve_base`, a negative
+`belly` — is caught by sweeping the wall end to end against the pot it has to
+contain. A silhouette that pinches is rejected **with the height it pinched at
+and how much it was short by**, rather than quietly producing a sleeve nothing
+fits in.
+
+For the polygonal styles there is a subtlety worth stating, because getting it
+backwards is a sleeve whose own pot will not go in: a section is cut from its
+**corner** radius, so the cavity is divided up by the flat factor. That puts
+the *inscribed* circle on the nursery pot instead of the circumscribed one —
+the flats are what the pot would come through first.
+
+### Sizing
+
+`sleeve_pot_size` fills in all three measurements from a nominal nursery size,
+and says in a warning that it has: a 6 inch pot is 6 inches across the **top**,
+its base is taken as 0.75 of that and its height as 0.95, which is about where
+nursery pots land. Measure yours into `sleeve_pot_top` / `_base` / `_height` —
+the reveal in particular depends on the height being right.
+
+`sleeve_reveal` is where the two rims finish: `0` is flush, positive lets the
+nursery pot's rim stand proud, negative hides it down inside.
+
 ## Under the pot
 
 ![the three parts](docs/img/underpot.png)
@@ -1028,6 +1097,12 @@ raked-soil lid, written as `<name>_soil_cap.*`).
 `replica_pot_top` (152.4), `replica_pot_base` (119.38), `replica_pot_height`
 (139.95), `replica_standoff` (25.0), `replica_plumbing` (True).
 
+**Nursery sleeve** — `sleeve` (False), `sleeve_pot_size` (`"custom"` or
+`"3in"`…`"12in"`), `sleeve_pot_top` (152.4), `sleeve_pot_base` (114.3),
+`sleeve_pot_height` (144.8), `sleeve_fit` (1.5), `sleeve_reveal` (0.0),
+`sleeve_well` (14.0), `sleeve_base` (0.0 = derived). Composes with
+`pot_style`, `surface_texture` and the rim; **not** with `vase_profile`.
+
 **Under the pot** — `underpot` (`"none"` | `"set"` | `"tray"` | `"riser"` |
 `"mesh"`), `under_pot_base` (110.0), `under_pot_size` (`"custom"` or
 `"3in"`…`"12in"`), `under_clearance` (3.0), `under_waffle` (6.0), `under_rim`
@@ -1159,6 +1234,7 @@ flowerpot/
   cradle.py     the dish-and-keel pair (a pot that drinks out of its dish)
   mosspole.py   the stacking moss pole (segment, base, funnel cap)
   underpot.py   tray, risers and drainage mesh for a pot you did not print
+  sleeve.py     a cover for the nursery pot the plant came in
   colors.py     the palette and hex parsing
   printers.py   machine profiles + the slicer project payload
   threemf.py    minimal colored-3MF writer (thumbnail + project settings)

@@ -1,0 +1,76 @@
+# Actions -> "Generate · nursery sleeve" -> Run workflow.
+# A cover for the nursery pot the plant came in: the pot drops in, pot and
+# all.  A sleeve is a pot, so every style and texture works on it.
+name: "Generate · nursery sleeve"
+
+on:
+  workflow_dispatch:
+    inputs:
+      sleeve_pot_size:
+        description: "Nominal nursery size (or custom, and measure below)"
+        type: choice
+        default: 6in
+        options: [custom, 3in, 4in, 5in, 6in, 7in, 8in, 10in, 12in]
+      sleeve_pot_top:
+        description: "Nursery pot across the TOP in mm (used when custom)"
+        type: string
+        default: "152.4"
+      sleeve_pot_base:
+        description: "... across the BASE in mm"
+        type: string
+        default: "114.3"
+      sleeve_pot_height:
+        description: "... and standing, in mm"
+        type: string
+        default: "144.8"
+      pot_style:
+        description: "Shape of the sleeve (vase_profile cannot be used here)"
+        type: choice
+        default: classic_tapered
+        options: [classic_tapered, hexagonal, square, ribbed_spiral, low_poly_faceted]
+      surface_texture:
+        description: "Relief pressed into the wall"
+        type: choice
+        default: none
+        options: [none, herringbone, honeycomb, diamonds, waves]
+      sleeve_reveal:
+        description: "mm the pot's rim stands proud (negative hides it)"
+        type: string
+        default: "0"
+      sleeve_well:
+        description: "Drip well under the pot in mm (it has no drain)"
+        type: string
+        default: "14"
+      sleeve_fit:
+        description: "Radial slack round the nursery pot in mm"
+        type: string
+        default: "1.5"
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: clay
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  sleeve:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Nursery sleeve: ${{ inputs.sleeve_pot_size }} ${{ inputs.pot_style }}"
+      artifact: "sleeve-${{ inputs.sleeve_pot_size }}"
+      cli_args: >-
+        --name cover
+        --sleeve
+        --sleeve-pot-size ${{ inputs.sleeve_pot_size }}
+        --sleeve-pot-top ${{ inputs.sleeve_pot_top }}
+        --sleeve-pot-base ${{ inputs.sleeve_pot_base }}
+        --sleeve-pot-height ${{ inputs.sleeve_pot_height }}
+        --pot-style ${{ inputs.pot_style }}
+        --surface-texture ${{ inputs.surface_texture }}
+        --sleeve-reveal ${{ inputs.sleeve_reveal }}
+        --sleeve-well ${{ inputs.sleeve_well }}
+        --sleeve-fit ${{ inputs.sleeve_fit }}
+        --color ${{ inputs.color }}
+        ${{ inputs.extra_args }}
