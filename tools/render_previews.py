@@ -513,6 +513,16 @@ def mosspole_figure(out: Path) -> None:
               out / "mosspole-wick.png", elev=8.0, azim=-90.0)
 
 
+def underpot_figure(out: Path) -> None:
+    from flowerpot.underpot import (build_under_mesh, build_under_riser,
+                                    build_under_tray)
+    p = PotParams(underpot="set", **FAST)
+    mesh_grid([("tray: the pot stands on the ribs", build_under_tray(p), "teal"),
+               ("riser: print three", build_under_riser(p), "clay"),
+               ("mesh disc: prints legs up", build_under_mesh(p), "sage")],
+              out / "underpot.png", elev=26.0, azim=-58.0)
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -543,6 +553,7 @@ def main(outdir: str = "docs/img") -> None:
     replica_figure(out)
     cradle_figure(out)
     mosspole_figure(out)
+    underpot_figure(out)
 
 
 if __name__ == "__main__":

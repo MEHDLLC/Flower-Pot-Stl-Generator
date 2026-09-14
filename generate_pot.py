@@ -145,6 +145,24 @@ PARAMS = dict(
     #                           0 takes the bucket's depth and no water
     replica_plumbing=True,    # ribs, overflow, fill notch and wick cup
 
+    # -- under the pot (tray, risers, drainage mesh) -------------------------
+    underpot="none",          # "set" writes all three; "tray", "riser" or
+    #                           "mesh" writes one.  For a pot you did NOT
+    #                           print: the only measurement needed is the
+    #                           diameter of its base.
+    under_pot_size="custom",  # or "3in".."12in" - a NOMINAL nursery size,
+    #                           which is the pot's width across the top
+    under_pot_base=110.0,     # the pot's base diameter, measured
+    under_clearance=3.0,      # radial gap, pot to tray wall
+    under_waffle=6.0,         # rib height in the tray - also how much water
+    #                           it holds before the pot is standing in it
+    under_rim=9.0,            # tray wall above the rib tops
+    under_riser_height=18.0,  # how far a foot lifts the pot
+    under_feet=3,             # 3 cannot rock; 4 spreads the load
+    under_mesh_diameter=0.0,  # 0 = derived from the base
+    under_mesh_open=0.35,     # fraction of the disc that is hole
+    under_mesh_legs=True,     # nubs so it cannot seal the drain holes
+
     # -- moss pole (a hollow column you pack with sphagnum) ------------------
     moss_pole="none",         # "set" writes one segment, the base and the
     #                           cap.  The segments are identical - print

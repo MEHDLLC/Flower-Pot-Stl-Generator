@@ -395,6 +395,79 @@ than quietly handing you something different from the photograph.
   separate because hanging it off the pot's floor would leave that floor
   spanning the whole pot with nothing under it.
 
+## Under the pot
+
+![the three parts](docs/img/underpot.png)
+
+`generate_saucer` already makes a tray for a pot *this* generator built, by
+measuring that pot. This is for the other case — the nursery pot, the glazed
+one from the shop, the one already full of soil — where the only numbers
+available are the ones a tape measure gives you. So all three parts are cut
+from **one measurement: the diameter of the pot's base.**
+
+```bash
+python -m flowerpot --underpot set --under-pot-base 110
+python -m flowerpot --underpot set --under-pot-size 6in     # a nominal size
+python -m flowerpot --underpot tray --under-waffle 10       # more water
+```
+
+`set` writes `<name>_tray`, `<name>_riser` and `<name>_mesh`.
+
+### The tray, and why it has a waffle
+
+A flat saucer puts the pot's base in the water it just drained, which is the
+thing a saucer is for. Ribs lift it clear and the water goes in the channels
+between them. `under_waffle` is the rib height, and it is therefore also **how
+much water the tray can hold before the pot is standing in it again** — which
+is the number the generator reports, not the brim volume.
+
+They are **crossing** ribs rather than radial fins, because the pot's base has
+to land on at least three of them wherever it is set down and a radial fan
+leaves the middle of the tray empty.
+
+Every crossing is **broken** — a disc taken out of each junction. A continuous
+waffle is a tray full of closed cells, each keeping its own puddle with no way
+to level with the others or be poured out; opening the corners makes the water
+under the rib tops a single connected body, which the tests check directly.
+Every cut is vertical, so none of it costs anything in overhang.
+
+### The risers
+
+Print `under_feet` of them and stand the pot on that many. They sit on a circle
+as far out as they go without any of the foot showing past the edge of the
+base, because a foot inboard of the base is a foot the pot can tip over — the
+generator reports the circle to use.
+
+**Three cannot rock on an uneven surface and four can**; four spreads the load,
+so take four on a heavy pot and a flat shelf. Each foot narrows going up, which
+is the direction that cannot overhang, and its top is dished so the pot's edge
+sits in it rather than walking off.
+
+### The mesh disc
+
+A pierced disc for the bottom of the pot, to keep the soil on the inside of the
+drainage holes. Holes are hex packed — the arrangement that gets the most open
+area for a given web — and every one is a vertical bore, the one cut that
+leaves nothing to hold up.
+
+What actually limits `under_mesh_open` is the **web** between holes: below a
+couple of extrusions the disc stops being a disc, so the generator opens the
+holes out rather than thinning the web, and reports what you actually got.
+
+The legs print pointing **up** and the disc goes in the pot the other way
+round. Printed downwards they would be four pillars with a disc bridged across
+them.
+
+### Sizing from a pot you did not make
+
+`under_pot_size` is a nominal nursery size and nothing more. A pot sold as a
+6 inch pot is 6 inches across the **top**; its base is narrower, and by how much
+is up to whoever moulded it. The table takes 0.75 of the nominal top, which is
+about where they land — near enough to print a saucer that works, not near
+enough to argue with a tape measure. The generator says so in a warning every
+time you use one. Measure yours and set `under_pot_base` instead; one
+measurement fixes all three parts.
+
 ## Moss pole
 
 ![the parts](docs/img/mosspole.png)
@@ -955,6 +1028,12 @@ raked-soil lid, written as `<name>_soil_cap.*`).
 `replica_pot_top` (152.4), `replica_pot_base` (119.38), `replica_pot_height`
 (139.95), `replica_standoff` (25.0), `replica_plumbing` (True).
 
+**Under the pot** — `underpot` (`"none"` | `"set"` | `"tray"` | `"riser"` |
+`"mesh"`), `under_pot_base` (110.0), `under_pot_size` (`"custom"` or
+`"3in"`…`"12in"`), `under_clearance` (3.0), `under_waffle` (6.0), `under_rim`
+(9.0), `under_riser_height` (18.0), `under_feet` (3), `under_mesh_diameter`
+(0.0 = auto), `under_mesh_open` (0.35), `under_mesh_legs` (True).
+
 **Moss pole** — `moss_pole` (`"none"` | `"set"` | `"segment"` | `"base"` |
 `"cap"`), `pole_diameter` (55.0 across the flats), `pole_segment_height`
 (150.0), `pole_segments` (3), `pole_shape` (`"square"` | `"hex"` | `"round"`),
@@ -1079,6 +1158,7 @@ flowerpot/
   replica.py    the shop-vessel pair (planter + reservoir + wick cup)
   cradle.py     the dish-and-keel pair (a pot that drinks out of its dish)
   mosspole.py   the stacking moss pole (segment, base, funnel cap)
+  underpot.py   tray, risers and drainage mesh for a pot you did not print
   colors.py     the palette and hex parsing
   printers.py   machine profiles + the slicer project payload
   threemf.py    minimal colored-3MF writer (thumbnail + project settings)

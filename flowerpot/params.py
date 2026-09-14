@@ -343,6 +343,33 @@ class PotParams:
     #                                  cup.  Off = the bare shapes.
 
     # ------------------------------------------------------------------
+    # 5k. Under the pot (drip tray, risers, drainage mesh)
+    # ------------------------------------------------------------------
+    underpot: str = "none"           # "set" writes all three; "tray",
+    #                                  "riser" or "mesh" writes one.  Sized
+    #                                  for a pot you did NOT print - the only
+    #                                  measurement needed is its base.
+    under_pot_base: float = 110.0    # the pot's base diameter in mm, across
+    #                                  the bottom.  Used when under_pot_size
+    #                                  is "custom".
+    under_pot_size: str = "custom"   # or a nominal nursery size: "3in" ...
+    #                                  "12in".  That is the pot's width across
+    #                                  the TOP; the base is taken as 0.75 of
+    #                                  it, which is about where they land.
+    under_clearance: float = 3.0     # radial gap, pot to tray wall
+    under_waffle: float = 6.0        # rib height in the tray's floor, which
+    #                                  is also how much water it can hold
+    #                                  before the pot is standing in it.
+    #                                  0 = a flat saucer.
+    under_rim: float = 9.0           # tray wall above the rib tops
+    under_riser_height: float = 18.0  # how far a foot lifts the pot
+    under_feet: int = 3              # 3 or 4.  Three cannot rock; four
+    #                                  spreads the load.
+    under_mesh_diameter: float = 0.0  # mesh disc across, 0 = from the base
+    under_mesh_open: float = 0.35    # fraction of the disc that is hole
+    under_mesh_legs: bool = True     # nubs so it cannot seal the drain holes
+
+    # ------------------------------------------------------------------
     # 5j. Moss pole (a hollow column you pack with sphagnum)
     # ------------------------------------------------------------------
     moss_pole: str = "none"          # "set" writes one segment, the base and
@@ -704,6 +731,17 @@ class PotParams:
                     "replica is its own object - it does not combine with "
                     "the pots, the yard art or the other product flags"
                 )
+        if self.underpot != "none":
+            from .underpot import check_underpot
+            warn += check_underpot(self)
+            if (self.moss_pole != "none" or self.cradle != "none"
+                    or self.replica != "none" or self.yard_plant != "none"
+                    or self.bouquet or self.stem or self.self_watering
+                    or self.hydro_tower or self.reservoir_insert
+                    or self.modular_kit != "none"):
+                raise ParameterError(
+                    "underpot is its own set - it does not combine with the "
+                    "pots or the other product flags")
         if self.moss_pole != "none":
             from .mosspole import check_mosspole
             warn += check_mosspole(self)

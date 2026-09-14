@@ -1,0 +1,80 @@
+# Actions -> "Generate · under the pot" -> Run workflow.
+# A drip tray with a waffle floor, a riser foot, and a drainage mesh disc -
+# all sized from one measurement: the diameter of the pot's base.
+name: "Generate · under the pot"
+
+on:
+  workflow_dispatch:
+    inputs:
+      underpot:
+        description: "What to write"
+        type: choice
+        default: set
+        options: [set, tray, riser, mesh]
+      under_pot_size:
+        description: "Nominal nursery size (or custom, and set the base below)"
+        type: choice
+        default: custom
+        options: [custom, 3in, 4in, 5in, 6in, 7in, 8in, 10in, 12in]
+      under_pot_base:
+        description: "The pot's base diameter in mm (used when custom)"
+        type: string
+        default: "110"
+      under_waffle:
+        description: "Rib height in the tray, in mm (0 = a flat saucer)"
+        type: string
+        default: "6"
+      under_rim:
+        description: "Tray wall above the rib tops, in mm"
+        type: string
+        default: "9"
+      under_clearance:
+        description: "Radial gap, pot to tray wall, in mm"
+        type: string
+        default: "3"
+      under_riser_height:
+        description: "How far a foot lifts the pot, in mm"
+        type: string
+        default: "18"
+      under_feet:
+        description: "How many feet (3 cannot rock, 4 spreads the load)"
+        type: choice
+        default: "3"
+        options: ["3", "4"]
+      under_mesh_open:
+        description: "Fraction of the mesh disc that is hole (0.15-0.55)"
+        type: string
+        default: "0.35"
+      under_mesh_legs:
+        description: "Nubs so the disc cannot seal the drain holes"
+        type: boolean
+        default: true
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: clay
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  underpot:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Under the pot: ${{ inputs.underpot }}"
+      artifact: "underpot-${{ inputs.underpot }}"
+      cli_args: >-
+        --name under
+        --underpot ${{ inputs.underpot }}
+        --under-pot-size ${{ inputs.under_pot_size }}
+        --under-pot-base ${{ inputs.under_pot_base }}
+        --under-waffle ${{ inputs.under_waffle }}
+        --under-rim ${{ inputs.under_rim }}
+        --under-clearance ${{ inputs.under_clearance }}
+        --under-riser-height ${{ inputs.under_riser_height }}
+        --under-feet ${{ inputs.under_feet }}
+        --under-mesh-open ${{ inputs.under_mesh_open }}
+        --${{ inputs.under_mesh_legs == false && 'no-' || '' }}under-mesh-legs
+        --color ${{ inputs.color }}
+        ${{ inputs.extra_args }}
