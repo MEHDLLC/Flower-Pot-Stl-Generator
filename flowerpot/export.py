@@ -71,7 +71,9 @@ def export_pot(
                       "cradle_diameter", "cradle_height",
                       "cradle_dish_height", "cradle_keel", "cradle_flare",
                       "pole_diameter", "pole_segment_height",
-                      "pole_reservoir")})
+                      "pole_reservoir",
+                      "under_pot_base", "under_waffle", "under_rim",
+                      "under_riser_height", "under_mesh_diameter")})
 
     for warning in params.validate():
         print(f"  WARN {warning}", file=sys.stderr)
@@ -121,6 +123,16 @@ def export_pot(
         from .replica import wants_wick
         if params.replica == "set" and wants_wick(params):
             jobs.append((build_replica_wick, f"{name}_wick", False))
+    elif params.underpot != "none":
+        from .underpot import (build_under_mesh, build_under_riser,
+                               build_under_tray)
+        jobs: list[tuple] = []
+        if params.underpot in ("tray", "set"):
+            jobs.append((build_under_tray, f"{name}_tray", True))
+        if params.underpot in ("riser", "set"):
+            jobs.append((build_under_riser, f"{name}_riser", not jobs))
+        if params.underpot in ("mesh", "set"):
+            jobs.append((build_under_mesh, f"{name}_mesh", not jobs))
     elif params.moss_pole != "none":
         from .mosspole import (build_pole_base, build_pole_cap,
                                build_pole_segment)
