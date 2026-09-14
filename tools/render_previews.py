@@ -484,6 +484,24 @@ def cradle_figure(out: Path) -> None:
     mesh_grid(bowls, out / "cradle-bowls.png", elev=16.0, azim=-62.0)
 
 
+def mosspole_figure(out: Path) -> None:
+    from flowerpot.mosspole import (build_pole_base, build_pole_cap,
+                                    build_pole_segment, stacked)
+    p = PotParams(moss_pole="set", **FAST)
+    mesh_grid([("three segments, base and cap", stacked(p), "sage"),
+               ("one segment", build_pole_segment(p), "sage"),
+               ("the base", build_pole_base(p), "clay"),
+               ("the cap", build_pole_cap(p), "clay")],
+              out / "mosspole.png", elev=14.0, azim=-58.0)
+    cases = []
+    for shape, pattern in (("square", "lattice"), ("hex", "slots"),
+                           ("round", "lattice")):
+        q = PotParams(moss_pole="segment", pole_shape=shape,
+                      pole_pattern=pattern, **FAST)
+        cases.append((f"{shape} / {pattern}", build_pole_segment(q), "teal"))
+    mesh_grid(cases, out / "mosspole-walls.png", elev=10.0, azim=-55.0)
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -513,6 +531,7 @@ def main(outdir: str = "docs/img") -> None:
     yard_hands_figure(out)
     replica_figure(out)
     cradle_figure(out)
+    mosspole_figure(out)
 
 
 if __name__ == "__main__":

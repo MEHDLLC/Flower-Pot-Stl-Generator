@@ -145,6 +145,19 @@ PARAMS = dict(
     #                           0 takes the bucket's depth and no water
     replica_plumbing=True,    # ribs, overflow, fill notch and wick cup
 
+    # -- moss pole (a hollow column you pack with sphagnum) ------------------
+    moss_pole="none",         # "set" writes one segment, the base and the
+    #                           cap.  The segments are identical - print
+    #                           pole_segments copies of the one file.
+    pole_diameter=55.0,       # ACROSS THE FLATS, on any of the shapes
+    pole_segment_height=150.0,  # one segment, joint included
+    pole_segments=3,          # how many you mean to stack
+    pole_shape="square",      # "square"|"hex"|"round" - a polygon keys the
+    #                           joint and gives you flats to tie a stem to
+    pole_pattern="lattice",   # "lattice"|"slots"|"solid"
+    pole_open=0.68,           # how much of the wall is opening
+    pole_rows=0,              # rows of openings per segment; 0 = auto
+
     # -- dish and keel (a pot that sits in a dish and drinks out of it) ------
     cradle="none",            # "set" writes both parts, "pot" or "dish" one
     #                           of them.  The pot's bottom is a cone - a keel

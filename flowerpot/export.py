@@ -69,7 +69,8 @@ def export_pot(
                       "replica_pot_top", "replica_pot_base",
                       "replica_pot_height", "replica_standoff",
                       "cradle_diameter", "cradle_height",
-                      "cradle_dish_height", "cradle_keel", "cradle_flare")})
+                      "cradle_dish_height", "cradle_keel", "cradle_flare",
+                      "pole_diameter", "pole_segment_height")})
 
     for warning in params.validate():
         print(f"  WARN {warning}", file=sys.stderr)
@@ -119,6 +120,16 @@ def export_pot(
         from .replica import wants_wick
         if params.replica == "set" and wants_wick(params):
             jobs.append((build_replica_wick, f"{name}_wick", False))
+    elif params.moss_pole != "none":
+        from .mosspole import (build_pole_base, build_pole_cap,
+                               build_pole_segment)
+        jobs: list[tuple] = []
+        if params.moss_pole in ("segment", "set"):
+            jobs.append((build_pole_segment, f"{name}_segment", True))
+        if params.moss_pole in ("base", "set"):
+            jobs.append((build_pole_base, f"{name}_base", not jobs))
+        if params.moss_pole in ("cap", "set"):
+            jobs.append((build_pole_cap, f"{name}_cap", not jobs))
     elif params.cradle != "none":
         from .cradle import build_cradle_dish, build_cradle_pot
         jobs: list[tuple] = []
