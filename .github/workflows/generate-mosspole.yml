@@ -1,0 +1,75 @@
+# Actions -> "Generate · moss pole" -> Run workflow.
+# A hollow column you pack with sphagnum, in segments that stack.  Writes
+# ONE segment: they are identical, so print as many as you asked for.
+name: "Generate · moss pole"
+
+on:
+  workflow_dispatch:
+    inputs:
+      moss_pole:
+        description: "What to write"
+        type: choice
+        default: set
+        options: [set, segment, base, cap]
+      pole_diameter:
+        description: "Width across the flats in mm"
+        type: string
+        default: "55"
+      pole_segment_height:
+        description: "One segment in mm, joint included (must fit the bed)"
+        type: string
+        default: "150"
+      pole_segments:
+        description: "How many you mean to stack (sets the reported height)"
+        type: string
+        default: "3"
+      pole_shape:
+        description: "Cross-section (a polygon keys the joint)"
+        type: choice
+        default: square
+        options: [square, hex, round]
+      pole_pattern:
+        description: "Wall openings"
+        type: choice
+        default: lattice
+        options: [lattice, slots, solid]
+      pole_open:
+        description: "How much of the wall is opening (0.3-0.85)"
+        type: string
+        default: "0.68"
+      pole_rows:
+        description: "Rows of openings per segment (0 = auto)"
+        type: string
+        default: "0"
+      wall_thickness:
+        description: "Wall in mm"
+        type: string
+        default: "3.0"
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: sage
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  mosspole:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Moss pole: ${{ inputs.moss_pole }}"
+      artifact: "mosspole-${{ inputs.moss_pole }}"
+      cli_args: >-
+        --name pole
+        --moss-pole ${{ inputs.moss_pole }}
+        --pole-diameter ${{ inputs.pole_diameter }}
+        --pole-segment-height ${{ inputs.pole_segment_height }}
+        --pole-segments ${{ inputs.pole_segments }}
+        --pole-shape ${{ inputs.pole_shape }}
+        --pole-pattern ${{ inputs.pole_pattern }}
+        --pole-open ${{ inputs.pole_open }}
+        --pole-rows ${{ inputs.pole_rows }}
+        --wall-thickness ${{ inputs.wall_thickness }}
+        --color ${{ inputs.color }}
+        ${{ inputs.extra_args }}

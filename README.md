@@ -395,6 +395,75 @@ than quietly handing you something different from the photograph.
   separate because hanging it off the pot's floor would leave that floor
   spanning the whole pot with nothing under it.
 
+## Moss pole
+
+![the parts](docs/img/mosspole.png)
+
+A hollow column you pack with sphagnum, in segments that stack. An aroid
+climbs by putting aerial roots into something damp; this is the something —
+open enough that roots get through the wall, and therefore much taller than
+any build plate, so it comes apart.
+
+```bash
+python -m flowerpot --moss-pole set --color sage
+python -m flowerpot --moss-pole set --pole-shape round --pole-open 0.8
+python -m flowerpot --moss-pole set --pole-diameter 75 --pole-segments 5
+```
+
+`set` writes three files — `<name>_segment`, `<name>_base` and `<name>_cap`.
+**The segments are identical, so only one is written**: print
+`pole_segments` copies of it. The base is a wide pierced foot that buries in
+the pot; the cap is a funnel that closes the top and is where you pour, so the
+water runs down the packed moss instead of off the outside.
+
+`pole_diameter` is the width **across the flats** on every shape — the number a
+ruler gives you, and the number a shop pole is sold by.
+
+### The joint
+
+The top of each segment steps in to a **spigot** that slips inside the mouth of
+the next, and the step it leaves is a flat annulus facing straight up — which is
+what the segment above lands on, so the stack has an exact pitch. Both mating
+surfaces are vertical, so both print as walls.
+
+The bore has to neck in by a wall plus the fit to get inside the segment above,
+and **a bore that narrows going up is a ceiling**, so the neck is coned at the
+overhang budget rather than stepped.
+
+On a square or hexagonal pole the spigot is the same polygon as the tube, which
+**keys** the joint: the segments only go together one way round, the pattern
+lines up, and nothing twists once a plant is leaning on it. A round pole spins —
+that is a real difference between the shapes, and there is a test that asserts
+it in both directions rather than glossing it.
+
+Each joint swallows the spigot's height out of the segment above it, so a
+150 mm segment buys 122 mm of column. The generator reports the number you
+actually get, not the one you asked for.
+
+### The wall
+
+![the three walls](docs/img/mosspole-walls.png)
+
+Every opening is a **pointed prism** — a rectangle with a gabled top and a V
+underneath, cut straight through the wall. A plain rectangular slot through a
+standing tube has a flat ceiling across the top of it; put a gable on that
+ceiling at the overhang budget and the same opening prints with nothing under
+it. The openings are therefore as wide as the budget allows and no wider.
+
+| `pole_pattern` | Look | Notes |
+|---|---|---|
+| `lattice` | staggered diamonds | the classic moss-pole wall, most edge for a root to hook on |
+| `slots` | the same opening with a straight waist let into it | fewer, taller windows: easier to pack, more open, less to grip |
+| `solid` | no openings | a plain climbing stake |
+
+Columns are a whole number per face, so an opening never lands on a corner —
+the corner is the stiffest part of the section and the part you tie a stem to.
+The cell they sit in is sized in **millimetres**, not as a fraction of the pole,
+because what has to be big enough is a root and a finger and neither scales with
+the diameter. `pole_open` then splits each cell between opening and strut; what
+stops it going to 1 is the strut left behind, and below about two extrusions
+wide the generator refuses with the number it wanted.
+
 ## Dish and keel
 
 ![the pair](docs/img/cradle.png)
@@ -827,6 +896,12 @@ raked-soil lid, written as `<name>_soil_cap.*`).
 `replica_pot_top` (152.4), `replica_pot_base` (119.38), `replica_pot_height`
 (139.95), `replica_standoff` (25.0), `replica_plumbing` (True).
 
+**Moss pole** — `moss_pole` (`"none"` | `"set"` | `"segment"` | `"base"` |
+`"cap"`), `pole_diameter` (55.0 across the flats), `pole_segment_height`
+(150.0), `pole_segments` (3), `pole_shape` (`"square"` | `"hex"` | `"round"`),
+`pole_pattern` (`"lattice"` | `"slots"` | `"solid"`), `pole_open` (0.68),
+`pole_rows` (0 = auto).
+
 **Dish and keel** — `cradle` (`"none"` | `"set"` | `"pot"` | `"dish"`),
 `cradle_diameter` (120.0 at the joint), `cradle_height` (108.0 assembled),
 `cradle_dish_height` (44.0), `cradle_keel` (26.0), `cradle_bowl` (`"round"` |
@@ -942,6 +1017,7 @@ flowerpot/
   modular.py    the dovetail standard + seed cubes, flower set, rotating stack
   replica.py    the shop-vessel pair (planter + reservoir + wick cup)
   cradle.py     the dish-and-keel pair (a pot that drinks out of its dish)
+  mosspole.py   the stacking moss pole (segment, base, funnel cap)
   colors.py     the palette and hex parsing
   printers.py   machine profiles + the slicer project payload
   threemf.py    minimal colored-3MF writer (thumbnail + project settings)

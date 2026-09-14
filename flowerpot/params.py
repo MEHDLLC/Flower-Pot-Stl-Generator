@@ -343,6 +343,29 @@ class PotParams:
     #                                  cup.  Off = the bare shapes.
 
     # ------------------------------------------------------------------
+    # 5j. Moss pole (a hollow column you pack with sphagnum)
+    # ------------------------------------------------------------------
+    moss_pole: str = "none"          # "set" writes one segment, the base and
+    #                                  the cap; "segment", "base" or "cap"
+    #                                  writes just that one.  Print
+    #                                  pole_segments copies of the segment -
+    #                                  they are identical.
+    pole_diameter: float = 55.0      # width ACROSS THE FLATS - the number a
+    #                                  ruler gives you, on any of the shapes
+    pole_segment_height: float = 150.0  # one segment, joint included
+    pole_segments: int = 3           # how many you mean to stack; drives the
+    #                                  reported height and the bed warning
+    pole_shape: str = "square"       # "square" | "hex" | "round".  A polygon
+    #                                  keys the joint and gives you flats to
+    #                                  tie a stem to.
+    pole_pattern: str = "lattice"    # "lattice" staggered diamonds |
+    #                                  "slots" tall windows | "solid" none
+    pole_open: float = 0.68          # how much of the wall is opening.  What
+    #                                  caps it is the strut left between two
+    #                                  openings.
+    pole_rows: int = 0               # rows of openings per segment; 0 = auto
+
+    # ------------------------------------------------------------------
     # 5i. Dish-and-keel pair (a pot that sits in a bowl and drinks from it)
     # ------------------------------------------------------------------
     cradle: str = "none"             # "set" writes both parts, "pot" or
@@ -665,6 +688,16 @@ class PotParams:
                     "replica is its own object - it does not combine with "
                     "the pots, the yard art or the other product flags"
                 )
+        if self.moss_pole != "none":
+            from .mosspole import check_mosspole
+            warn += check_mosspole(self)
+            if (self.cradle != "none" or self.replica != "none"
+                    or self.yard_plant != "none" or self.bouquet or self.stem
+                    or self.self_watering or self.hydro_tower
+                    or self.reservoir_insert or self.modular_kit != "none"):
+                raise ParameterError(
+                    "moss_pole is its own object - it does not combine with "
+                    "the pots or the other product flags")
         if self.cradle != "none":
             from .cradle import check_cradle
             warn += check_cradle(self)
