@@ -343,6 +343,28 @@ class PotParams:
     #                                  cup.  Off = the bare shapes.
 
     # ------------------------------------------------------------------
+    # 5l. Nursery pot sleeve (a cover for the pot the plant came in)
+    # ------------------------------------------------------------------
+    sleeve: bool = False             # the nursery pot drops in, pot and all.
+    #                                  A sleeve IS a pot: pot_style,
+    #                                  vase_profile, surface_texture and the
+    #                                  rim all work on it as usual.
+    sleeve_pot_size: str = "custom"  # or a nominal nursery size, "3in" ...
+    #                                  "12in", which fills in all three
+    #                                  measurements below with typical ones
+    sleeve_pot_top: float = 152.4    # the nursery pot, across the top
+    sleeve_pot_base: float = 114.3   # ... across the base
+    sleeve_pot_height: float = 144.8  # ... and standing
+    sleeve_fit: float = 1.5          # radial slack round the nursery pot
+    sleeve_reveal: float = 0.0       # mm the pot's rim stands proud of the
+    #                                  sleeve's; negative hides it below
+    sleeve_well: float = 14.0        # drip well under the pot.  There is no
+    #                                  drain, so it is also the most the
+    #                                  sleeve can hold.
+    sleeve_base: float = 0.0         # the sleeve's own bottom diameter,
+    #                                  0 = derived from its mouth
+
+    # ------------------------------------------------------------------
     # 5k. Under the pot (drip tray, risers, drainage mesh)
     # ------------------------------------------------------------------
     underpot: str = "none"           # "set" writes all three; "tray",
@@ -731,6 +753,17 @@ class PotParams:
                     "replica is its own object - it does not combine with "
                     "the pots, the yard art or the other product flags"
                 )
+        if self.sleeve:
+            from .sleeve import check_sleeve
+            warn += check_sleeve(self)
+            if (self.underpot != "none" or self.moss_pole != "none"
+                    or self.cradle != "none" or self.replica != "none"
+                    or self.yard_plant != "none" or self.bouquet or self.stem
+                    or self.self_watering or self.hydro_tower
+                    or self.reservoir_insert or self.modular_kit != "none"):
+                raise ParameterError(
+                    "sleeve is its own object - it does not combine with the "
+                    "pots or the other product flags")
         if self.underpot != "none":
             from .underpot import check_underpot
             warn += check_underpot(self)

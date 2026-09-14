@@ -73,7 +73,9 @@ def export_pot(
                       "pole_diameter", "pole_segment_height",
                       "pole_reservoir",
                       "under_pot_base", "under_waffle", "under_rim",
-                      "under_riser_height", "under_mesh_diameter")})
+                      "under_riser_height", "under_mesh_diameter",
+                      "sleeve_pot_top", "sleeve_pot_base",
+                      "sleeve_pot_height", "sleeve_well", "sleeve_base")})
 
     for warning in params.validate():
         print(f"  WARN {warning}", file=sys.stderr)
@@ -123,6 +125,9 @@ def export_pot(
         from .replica import wants_wick
         if params.replica == "set" and wants_wick(params):
             jobs.append((build_replica_wick, f"{name}_wick", False))
+    elif params.sleeve:
+        from .sleeve import build_sleeve
+        jobs: list[tuple] = [(build_sleeve, f"{name}_sleeve", True)]
     elif params.underpot != "none":
         from .underpot import (build_under_mesh, build_under_riser,
                                build_under_tray)

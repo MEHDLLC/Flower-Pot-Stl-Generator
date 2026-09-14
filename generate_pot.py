@@ -145,6 +145,23 @@ PARAMS = dict(
     #                           0 takes the bucket's depth and no water
     replica_plumbing=True,    # ribs, overflow, fill notch and wick cup
 
+    # -- nursery sleeve (a cover for the pot the plant came in) --------------
+    sleeve=False,             # the nursery pot drops in, pot and all.  A
+    #                           sleeve IS a pot: pot_style, surface_texture
+    #                           and the rim all work on it as usual.
+    #                           vase_profile does not - see the README.
+    sleeve_pot_size="custom", # or "3in".."12in", which fills in all three
+    #                           measurements below with typical ones
+    sleeve_pot_top=152.4,     # the nursery pot, across the top
+    sleeve_pot_base=114.3,    # ... across the base
+    sleeve_pot_height=144.8,  # ... and standing
+    sleeve_fit=1.5,           # radial slack round the nursery pot
+    sleeve_reveal=0.0,        # mm its rim stands proud of the sleeve's;
+    #                           negative hides it below
+    sleeve_well=14.0,         # drip well under the pot.  No drain, so it is
+    #                           also the most the sleeve can hold.
+    sleeve_base=0.0,          # the sleeve's own bottom diameter, 0 = derived
+
     # -- under the pot (tray, risers, drainage mesh) -------------------------
     underpot="none",          # "set" writes all three; "tray", "riser" or
     #                           "mesh" writes one.  For a pot you did NOT
