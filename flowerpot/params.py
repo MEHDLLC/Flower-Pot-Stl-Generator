@@ -364,6 +364,22 @@ class PotParams:
     #                                  caps it is the strut left between two
     #                                  openings.
     pole_rows: int = 0               # rows of openings per segment; 0 = auto
+    pole_barbs: str = "inside"       # "none" | "inside" | "outside" | "both".
+    #                                  Little shelves with ramped undersides:
+    #                                  inside they stop the packed column
+    #                                  settling, outside they hold a sheet of
+    #                                  moss wrapped round the pole.
+    pole_reservoir: float = 0.0      # mm of water the base holds under the
+    #                                  column.  0 leaves it a foot that
+    #                                  drains.  It is a sump, not a tank: it
+    #                                  catches what you pour through the cap
+    #                                  and feeds it back to the bottom of the
+    #                                  moss, and an overflow sets the level.
+    pole_wick: bool = False          # eyes in the cap and a post in the base,
+    #                                  so a string can run down the column and
+    #                                  back up.  It spreads what you pour down
+    #                                  the whole pole, and keeps the bottom of
+    #                                  the moss in touch with the sump.
 
     # ------------------------------------------------------------------
     # 5i. Dish-and-keel pair (a pot that sits in a bowl and drinks from it)

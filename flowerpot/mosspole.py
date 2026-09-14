@@ -60,7 +60,7 @@ import math
 import numpy as np
 import trimesh
 
-from .build import _boolean, _finish, _prism, lathe
+from .build import _boolean, _diamond_port, _finish, _prism, lathe
 from .params import ParameterError, PotParams
 from .profile import slope_budget
 from .sections import Section, make_section
@@ -68,6 +68,7 @@ from .sections import Section, make_section
 SHAPES = {"square": ("square", 4), "hex": ("hexagonal", 6),
           "round": ("classic_tapered", 1)}
 PATTERNS = ("lattice", "slots", "solid")
+BARBS = ("none", "inside", "outside", "both")
 
 _RESERVE = 0.08          # held back from tan(limit)
 _JOINT = 0.22            # spigot height, as a fraction of the segment
@@ -80,6 +81,18 @@ _FOOT_SPREAD = 1.9       # base plate, in pole widths across the flats
 _FOOT_HOLES = 6
 _FUNNEL_MOUTH = 1.6      # cap mouth, in pole diameters
 _CAP_COLLAR = 10.0       # straight socket under the funnel
+_CAP_EYE_CLEAR = 8.0     # wick eyes sit this far above the spigot's top
+
+_SUMP_FREE = 6.0         # air between the water line and the bore's neck
+_SUMP_MIN = 8.0          # shallower than this is a puddle, not a sump
+_SUMP_MAX = 140.0
+_OVERFLOW_W = 3.5        # half width of the port that sets the water line
+_PILLAR_R = 5.0          # the post the wick loops under
+_EYE_W = 2.4             # half width of the eyes the wick threads through
+
+_BARB_REACH = 1.4        # barb protrusion, in wall thicknesses
+_BARB_CAP = 0.09         # ... and never more than this of the pole
+_BARB_HALF = 0.35        # barb half width, as a fraction of the strut
 
 
 # ---------------------------------------------------------------------------
@@ -163,6 +176,7 @@ def plan(p: PotParams) -> dict:
             f"pole_diameter or "
             f"thin wall_thickness")
 
+    floor = max(4.0, p.base_thickness)
     joint = min(_JOINT * h, _JOINT_MAX)
     neck = (t + _FIT) * f / s                # coned, not stepped: see above
     # the joint is a fixed share of the segment, so a short segment is not a
@@ -174,10 +188,39 @@ def plan(p: PotParams) -> dict:
             f"of it is spigot, and what is left is not worth packing - give a "
             f"segment at least {need:.0f} mm")
 
+    sump = max(0.0, float(p.pole_reservoir))
+    if sump and not _SUMP_MIN <= sump <= _SUMP_MAX:
+        raise ParameterError(
+            f"pole_reservoir should be {_SUMP_MIN:.0f}-{_SUMP_MAX:.0f} mm of "
+            f"water, or 0 for a foot that drains instead of holding")
+    # the base is the plate, then the water, then air, then the bore's neck,
+    # then the spigot the first segment lands on
+    base_rise = floor + (sump + _SUMP_FREE if sump else 0.0) + neck + joint
+
     return dict(s=s, wall=t, r=r, r_bore=r_bore, r_spig=r_spig, r_neck=r_neck,
                 h=h, n=n, joint=joint, neck=neck, f=f, sides=sides,
+                floor=floor, sump=sump, base_rise=base_rise,
                 pitch=h - joint,             # what one more segment buys you
                 height=n * (h - joint) + joint)
+
+
+def section_area(p: PotParams, radius: float) -> float:
+    """Area enclosed by the section at ``radius`` - a rounded square is
+    neither a square nor a circle, so measure it rather than assume."""
+    sec = pole_section(p)
+    theta = np.linspace(0.0, 2.0 * math.pi, 720, endpoint=False)
+    x, y = sec.xy(theta, 0.0, radius, decorate=False)
+    return float(0.5 * abs(np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y)))
+
+
+def sump_millilitres(p: PotParams) -> float:
+    """Water the closed base holds, less the wick post standing in it."""
+    k = plan(p)
+    if not k["sump"]:
+        return 0.0
+    gross = section_area(p, k["r_bore"]) * k["sump"]
+    post = math.pi * _PILLAR_R ** 2 * k["sump"] if p.pole_wick else 0.0
+    return max(gross - post, 0.0) / 1000.0
 
 
 def assembled_height(p: PotParams) -> float:
@@ -223,12 +266,15 @@ def pattern_grid(p: PotParams) -> dict | None:
     tall = p.pole_pattern == "slots"
     ring = perimeter(p)
 
-    cell_target = max(14.0, 0.34 * 2.0 * k["r"])
+    cell_target = max(14.0, 0.34 * float(p.pole_diameter))
     if k["sides"] > 2:
-        per_face = max(1, int(round(face_width(k) / cell_target)))
-        cols = k["sides"] * per_face
+        # an EVEN number of columns per face, so they straddle the face
+        # centre instead of sitting on it: that leaves the centre of every
+        # face solid, which is where the barbs go and where a corner never is
+        per_face = max(2, 2 * int(round(face_width(k) / (2.0 * cell_target))))
+        cols, phase = k["sides"] * per_face, 0.5
     else:
-        cols = max(6, int(round(ring / cell_target)))
+        cols, phase = max(6, int(round(ring / cell_target))), 0.0
 
     cell = ring / cols
     open_frac = float(np.clip(p.pole_open, 0.05, 0.95))
@@ -262,7 +308,7 @@ def pattern_grid(p: PotParams) -> dict | None:
             f"the {span:.0f} mm this segment has to give - lower pole_rows, "
             f"or lengthen pole_segment_height")
     return dict(cols=cols, rows=rows, pitch=pitch, half=half, up=up,
-                body=body, strut=strut, cell=cell,
+                body=body, strut=strut, cell=cell, phase=phase,
                 z0=_MARGIN + 0.5 * pitch)
 
 
@@ -285,6 +331,9 @@ def check_mosspole(p: PotParams) -> list[str]:
             f"['set', 'segment', 'base', 'cap']")
     if p.moss_pole == "none":
         return out
+    if p.pole_barbs not in BARBS:
+        raise ParameterError(
+            f"unknown pole_barbs {p.pole_barbs!r}; choose from {list(BARBS)}")
     if not 1 <= int(p.pole_segments) <= 12:
         raise ParameterError("pole_segments should be 1-12")
     if int(p.pole_rows) < 0:
@@ -300,6 +349,28 @@ def check_mosspole(p: PotParams) -> list[str]:
             f"about {100.0 * open_area_fraction(p):.0f}% of the wall is "
             f"opening, on a {pattern_grid(p)['strut']:.1f} mm strut - pack it "
             f"with damp sphagnum before you stand it up, not after")
+    if k["sump"]:
+        out.append(
+            f"the base holds about {sump_millilitres(p):.0f} ml under the "
+            f"column, and an overflow sets the level - but it is a sump, not "
+            f"a tank: a string lifts water about a hand's width, so this "
+            f"feeds the bottom of the pole and the cap feeds the rest")
+        if not p.pole_wick:
+            out.append(
+                "there is water under the column and nothing reaching down "
+                "to it - set pole_wick and run a string, or the moss has to "
+                "bridge the gap on its own")
+    elif p.pole_wick:
+        out.append(
+            "pole_wick with no pole_reservoir leaves the string hanging out "
+            "of the base into the pot's soil, which wicks too - set "
+            "pole_reservoir if you would rather it drew from its own water")
+    if p.pole_barbs in ("inside", "both"):
+        reach, _rise, _half = barb_size(p)
+        out.append(
+            f"{reach:.1f} mm barbs inside the wall hold the packed column up "
+            f"- they start above the socket at the bottom of a segment, "
+            f"because down there the bore is full of the spigot below it")
     if p.printer != "none":
         from .printers import PRINTERS
         bed_h = PRINTERS[p.printer]["height"]
@@ -331,6 +402,113 @@ def _pointed_port(x0: float, x1: float, z0: float, z1: float,
     return _prism(profile, x0, x1)
 
 
+def barb_grid(p: PotParams) -> dict | None:
+    """Barbs sit on the lattice too - a solid pole borrows the lattice's
+    grid without cutting it, so the two patterns never argue."""
+    if p.pole_barbs == "none":
+        return None
+    return pattern_grid(p) or pattern_grid(p.with_(pole_pattern="lattice"))
+
+
+def _barb(x_wall: float, reach: float, rise: float, half: float
+          ) -> trimesh.Trimesh:
+    """A little shelf with a ramped underside.
+
+    Flat on top, because that is the face the moss rests on; and nothing
+    underneath it steeper than the budget, because the ramp **is** the
+    budget - ``rise = reach / s`` and the underside lands exactly on the
+    limit.  ``reach`` is signed: negative points into the bore.
+    """
+    tip = x_wall + reach
+    v = [(x_wall, -half, 0.0), (x_wall, half, 0.0),
+         (x_wall, -half, rise), (x_wall, half, rise),
+         (tip, -half, rise), (tip, half, rise)]
+    faces = [[0, 3, 1], [0, 2, 3],        # the face buried in the wall
+             [2, 4, 5], [2, 5, 3],        # the flat top
+             [0, 1, 5], [0, 5, 4],        # the ramp underneath
+             [0, 4, 2], [1, 3, 5]]        # the two ends
+    m = trimesh.Trimesh(vertices=v, faces=faces, process=True)
+    if not m.is_winding_consistent:
+        m.fix_normals()
+    if m.volume < 0:
+        m.invert()
+    return m
+
+
+def barb_size(p: PotParams) -> tuple[float, float, float]:
+    """(reach, rise, half width) of one barb."""
+    k = plan(p)
+    g = barb_grid(p)
+    reach = min(_BARB_REACH * k["wall"], _BARB_CAP * float(p.pole_diameter))
+    return reach, reach / k["s"], min(_BARB_HALF * g["strut"], 4.0)
+
+
+def barb_sites(p: PotParams) -> list[tuple[float, float, bool]]:
+    """``(height, azimuth, inward)`` for every barb.
+
+    One per face, on the middle of the flat - never on a corner, where a
+    flat-backed wedge would not sit, and never where an opening is about to
+    be cut.  A staggered row moves its openings half a cell, so the barbs
+    step half a cell with them and stay on the strut.
+    """
+    g = barb_grid(p)
+    if g is None:
+        return []
+    k = plan(p)
+    lattice = p.pole_pattern == "lattice"
+    want_in = p.pole_barbs in ("inside", "both")
+    want_out = p.pole_barbs in ("outside", "both")
+    cell_angle = 2.0 * math.pi / g["cols"]
+    sites = []
+    for row in range(g["rows"]):
+        z = g["z0"] + row * g["pitch"]
+        turn = 0.5 if (row % 2 and lattice) else 0.0
+        if k["sides"] > 2:
+            azimuths = [2.0 * math.pi * j / k["sides"] + turn * cell_angle
+                        for j in range(k["sides"])]
+        else:
+            azimuths = [cell_angle * (c + 0.5 + turn) for c in range(g["cols"])]
+        # the bottom of a segment is a socket: down there the bore is full
+        # of the spigot below it, so an inward barb would be interference
+        # and not grip.  Outward ones have nothing to hit and carry on.
+        inside_here = want_in and z >= k["joint"] + 1.0
+        for a in azimuths:
+            if inside_here:
+                sites.append((z, a, True))
+            if want_out:
+                sites.append((z, a, False))
+    return sites
+
+
+def _barbs(p: PotParams) -> trimesh.Trimesh | None:
+    """Nubs on the wall, at the crossings of the pattern.
+
+    They are unioned on **before** the openings are cut, which means an
+    opening always wins: a barb can never end up plugging one.
+
+    Inside they stop the packed column settling away from the wall; outside
+    they hold a sheet of moss you have wrapped round the pole while you get
+    the twine on, and give roots something to sit against.
+    """
+    sites = barb_sites(p)
+    if not sites:
+        return None
+    k = plan(p)
+    sec = pole_section(p)
+    reach, rise, half = barb_size(p)
+    out = []
+    for z, a, inward in sites:
+        rot = trimesh.transformations.rotation_matrix(a, [0, 0, 1])
+        radius = k["r_bore"] if inward else k["r"]
+        x = float(sec.radius(np.array([a]), z, radius, False)[0])
+        one = _barb(x + (0.6 if inward else -0.6),
+                    -reach if inward else reach, rise, half)
+        one.apply_translation((0.0, 0.0, z))
+        one.apply_transform(rot)
+        out.append(one)
+    return trimesh.util.concatenate(out) if out else None
+
+
 def _pattern_cutters(p: PotParams) -> list[trimesh.Trimesh]:
     g = pattern_grid(p)
     if g is None:
@@ -345,7 +523,7 @@ def _pattern_cutters(p: PotParams) -> list[trimesh.Trimesh]:
         # openings up into one long slit
         turn = 0.5 if (row % 2 and p.pole_pattern == "lattice") else 0.0
         for col in range(g["cols"]):
-            a = 2.0 * math.pi * (col + turn) / g["cols"]
+            a = 2.0 * math.pi * (col + g["phase"] + turn) / g["cols"]
             port = _pointed_port(x0=-1.0, x1=reach, z0=z - 0.5 * g["body"],
                                  z1=z + 0.5 * g["body"], half=g["half"],
                                  up=g["up"])
@@ -384,6 +562,9 @@ def build_pole_segment(p: PotParams) -> trimesh.Trimesh:
     body = lathe(segment_rings(p), sec, decorate=False)
     body = _boolean("difference",
                     [body, lathe(segment_bore_rings(p), sec, decorate=False)])
+    barbs = _barbs(p)
+    if barbs is not None:
+        body = _boolean("union", [body, barbs])
     cutters = _pattern_cutters(p)
     if cutters:
         body = _boolean("difference", [body] + cutters)
@@ -394,12 +575,21 @@ def build_pole_segment(p: PotParams) -> trimesh.Trimesh:
 # the base
 # ---------------------------------------------------------------------------
 def build_pole_base(p: PotParams) -> trimesh.Trimesh:
-    """A wide foot with a socket on top.
+    """A wide foot with a socket on top - and, if you ask for one, a sump.
 
     It buries in the pot: the plate spreads the load so the column does not
-    sink, and it is pierced so water and roots are not asked to go round
-    it.  The socket is the segment's own spigot, so the first segment sits
-    in the base exactly the way every other one sits in the one below.
+    sink, and its flange is pierced so water and roots are not asked to go
+    round it.  The socket is the segment's own spigot, so the first segment
+    sits in the base the way every other one sits in the one below.
+
+    With ``pole_reservoir`` set, the cup under that socket is deepened and
+    holds water.  **It is a sump, not a tank.**  What fills it is what you
+    pour through the cap and what the column does not hold; what empties it
+    is the bottom of the moss, and a string if you fitted one.  A cotton
+    wick lifts water about a hand's width before the flow stops being worth
+    counting, so this feeds the bottom of the pole and the cap feeds the
+    rest.  An overflow through the wall sets the level, and what goes over
+    it waters the pot, which is where it was going anyway.
     """
     check_mosspole(p)
     k = plan(p)
@@ -407,41 +597,87 @@ def build_pole_base(p: PotParams) -> trimesh.Trimesh:
     # wide enough to spread the load, and never so close to the collar
     # that the drainage ring has nowhere to go
     plate_r = max(_FOOT_SPREAD * 0.5 * float(p.pole_diameter), k["r"] + 14.0)
-    floor = max(4.0, p.base_thickness)
-    rise = floor + k["joint"]
+    floor, rise = k["floor"], k["base_rise"]
+    shoulder = rise - k["joint"]
 
     # the plate is round whatever the pole is: it wants area, not corners
     round_sec = Section(p.with_(pot_style="classic_tapered",
                                 surface_texture="none"))
     plate = lathe([(plate_r, 0.0), (plate_r, floor - 1.2),
                    (plate_r - 1.2, floor)], round_sec, decorate=False)
-    collar = lathe([(k["r"], 0.0), (k["r"], rise - k["joint"]),
-                    (k["r_spig"], rise - k["joint"]), (k["r_spig"], rise)],
+    collar = lathe([(k["r"], 0.0), (k["r"], shoulder),
+                    (k["r_spig"], shoulder), (k["r_spig"], rise)],
                    sec, decorate=False)
     body = _boolean("union", [plate, collar])
-    # the socket bore stops short of the plate, so the column stands on
-    # something solid rather than on the moss below it
-    body = _boolean("difference", [body, lathe(
-        [(k["r_neck"], floor), (k["r_neck"], rise + 2.0)], sec,
-        decorate=False)])
 
-    # the holes live in the annulus between the collar's corners and the
-    # plate's edge, so they stay holes instead of breaking out into notches
+    # the cup: the segment's own bore, closed at the plate.  With no sump
+    # asked for there is no cup to speak of and the bore is all neck - the
+    # cone still gets its full height, because shortening it is what would
+    # tip it past the budget
+    z_neck = max(shoulder - k["neck"], floor)
+    body = _boolean("difference", [body, lathe(
+        [(k["r_bore"], floor), (k["r_bore"], z_neck),
+         (k["r_neck"], shoulder), (k["r_neck"], rise + 2.0)],
+        sec, decorate=False)])
+
+    post_top = floor + max(k["sump"], 10.0) + 4.0
+    if p.pole_wick:
+        # the post the wick loops under, so the string can be pulled taut
+        # down the middle of the column instead of lying against the wall.
+        # It goes on *after* the cup is bored, or the bore takes it with it
+        post = trimesh.creation.cylinder(radius=_PILLAR_R,
+                                         height=post_top - floor, sections=32)
+        post.apply_translation((0.0, 0.0, 0.5 * (post_top + floor)))
+        body = _boolean("union", [body, post])
+
+    cutters = []
+    if p.pole_wick:
+        cutters.append(_diamond_port(
+            x0=-1.5 * _PILLAR_R, x1=1.5 * _PILLAR_R,
+            z_center=post_top - 4.0,
+            half_w=2.0, up=2.0 / k["s"], down=1.8))
+    if k["sump"]:
+        # a diamond, not a round hole: a round hole through a standing wall
+        # has a ceiling straight across the top of it.  Started clear of the
+        # post so it cuts the wall and not the anchor.
+        cutters.append(_diamond_port(
+            x0=1.6 * _PILLAR_R, x1=k["r"] + 8.0, z_center=floor + k["sump"],
+            half_w=_OVERFLOW_W, up=_OVERFLOW_W / k["s"],
+            down=0.9 * _OVERFLOW_W))
+
+    # the flange holes live in the annulus between the collar's corners and
+    # the plate's edge, so they stay holes instead of breaking out into
+    # notches - and being outside the collar, they never drain the cup
     inner, outer = k["r"] + 2.0, plate_r - 2.5
-    holes = []
     ring = 0.5 * (inner + outer)
     for i in range(_FOOT_HOLES):
         a = 2.0 * math.pi * (i + 0.5) / _FOOT_HOLES
         hole = trimesh.creation.cylinder(radius=0.40 * (outer - inner),
                                          height=40.0, sections=32)
         hole.apply_translation((ring * math.cos(a), ring * math.sin(a), 0.0))
-        holes.append(hole)
-    return _finish(_boolean("difference", [body] + holes), center=False)
+        cutters.append(hole)
+    return _finish(_boolean("difference", [body] + cutters), center=False)
 
 
 # ---------------------------------------------------------------------------
 # the cap
 # ---------------------------------------------------------------------------
+def cap_plan(p: PotParams) -> dict:
+    """The funnel's numbers.
+
+    A cap that carries the wick eyes needs a collar long enough to put them
+    **above** the spigot buried in its socket - otherwise the eye opens into
+    the half-millimetre gap round the spigot, where no string will go.
+    """
+    k = plan(p)
+    mouth = _FUNNEL_MOUTH * k["r"]
+    flare = (mouth - k["r"]) / k["s"]                  # at the budget exactly
+    collar = (max(_CAP_COLLAR, k["joint"] + _CAP_EYE_CLEAR) if p.pole_wick
+              else _CAP_COLLAR)
+    return dict(mouth=mouth, flare=flare, collar=collar, top=collar + flare,
+                eye_z=k["joint"] + 0.5 * _CAP_EYE_CLEAR)
+
+
 def build_pole_cap(p: PotParams) -> trimesh.Trimesh:
     """A funnel that drops onto the top spigot.
 
@@ -453,18 +689,28 @@ def build_pole_cap(p: PotParams) -> trimesh.Trimesh:
     k = plan(p)
     sec = pole_section(p)
     t = k["wall"]
-    mouth = _FUNNEL_MOUTH * k["r"]
-    flare = (mouth - k["r"]) / k["s"]                  # at the budget exactly
-    top = _CAP_COLLAR + flare
+    c = cap_plan(p)
+    mouth, collar, top = c["mouth"], c["collar"], c["top"]
 
-    body = lathe([(k["r"], 0.0), (k["r"], _CAP_COLLAR), (mouth, top)],
+    body = lathe([(k["r"], 0.0), (k["r"], collar), (mouth, top)],
                  sec, decorate=False)
     # the bore: the socket the spigot goes into, then the funnel, carried
     # past the mouth so the lip reads as an edge instead of a shelf
-    bore = lathe([(k["r_bore"], -2.0), (k["r_bore"], _CAP_COLLAR),
+    bore = lathe([(k["r_bore"], -2.0), (k["r_bore"], collar),
                   (mouth - t * k["f"] + k["s"] * 2.0, top + 2.0)],
                  sec, decorate=False)
-    return _finish(_boolean("difference", [body, bore]), center=False)
+    cap = _boolean("difference", [body, bore])
+    if p.pole_wick:
+        # two eyes to tie the string off, above where the spigot ends
+        for i in range(2):
+            eye = _diamond_port(x0=0.0, x1=k["r"] + 8.0,
+                                z_center=c["eye_z"],
+                                half_w=_EYE_W, up=_EYE_W / k["s"],
+                                down=0.9 * _EYE_W)
+            eye.apply_transform(trimesh.transformations.rotation_matrix(
+                math.pi * i, [0, 0, 1]))
+            cap = _boolean("difference", [cap, eye])
+    return _finish(cap, center=False)
 
 
 # ---------------------------------------------------------------------------

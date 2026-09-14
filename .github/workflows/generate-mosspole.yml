@@ -41,6 +41,19 @@ on:
         description: "Rows of openings per segment (0 = auto)"
         type: string
         default: "0"
+      pole_barbs:
+        description: "Nubs that grip the moss"
+        type: choice
+        default: inside
+        options: [inside, outside, both, none]
+      pole_reservoir:
+        description: "mm of water the base holds (0 = a foot that drains)"
+        type: string
+        default: "0"
+      pole_wick:
+        description: "Eyes in the cap and a post in the base, for a string"
+        type: boolean
+        default: false
       wall_thickness:
         description: "Wall in mm"
         type: string
@@ -70,6 +83,9 @@ jobs:
         --pole-pattern ${{ inputs.pole_pattern }}
         --pole-open ${{ inputs.pole_open }}
         --pole-rows ${{ inputs.pole_rows }}
+        --pole-barbs ${{ inputs.pole_barbs }}
+        --pole-reservoir ${{ inputs.pole_reservoir }}
+        --${{ inputs.pole_wick == false && 'no-' || '' }}pole-wick
         --wall-thickness ${{ inputs.wall_thickness }}
         --color ${{ inputs.color }}
         ${{ inputs.extra_args }}

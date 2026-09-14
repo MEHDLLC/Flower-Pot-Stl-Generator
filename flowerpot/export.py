@@ -70,7 +70,8 @@ def export_pot(
                       "replica_pot_height", "replica_standoff",
                       "cradle_diameter", "cradle_height",
                       "cradle_dish_height", "cradle_keel", "cradle_flare",
-                      "pole_diameter", "pole_segment_height")})
+                      "pole_diameter", "pole_segment_height",
+                      "pole_reservoir")})
 
     for warning in params.validate():
         print(f"  WARN {warning}", file=sys.stderr)

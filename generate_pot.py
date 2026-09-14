@@ -157,6 +157,15 @@ PARAMS = dict(
     pole_pattern="lattice",   # "lattice"|"slots"|"solid"
     pole_open=0.68,           # how much of the wall is opening
     pole_rows=0,              # rows of openings per segment; 0 = auto
+    pole_barbs="inside",      # "none"|"inside"|"outside"|"both" - little
+    #                           shelves with ramped undersides.  Inside they
+    #                           stop the packed column settling; outside they
+    #                           hold a sheet of moss wrapped round the pole.
+    pole_reservoir=0.0,       # mm of water the base holds under the column.
+    #                           A sump, not a tank: it catches what you pour
+    #                           through the cap, and an overflow sets the level
+    pole_wick=False,          # eyes in the cap and a post in the base, so a
+    #                           string can run down the column and back up
 
     # -- dish and keel (a pot that sits in a dish and drinks out of it) ------
     cradle="none",            # "set" writes both parts, "pot" or "dish" one

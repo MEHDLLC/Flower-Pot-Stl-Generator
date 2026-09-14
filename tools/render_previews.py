@@ -500,6 +500,17 @@ def mosspole_figure(out: Path) -> None:
                       pole_pattern=pattern, **FAST)
         cases.append((f"{shape} / {pattern}", build_pole_segment(q), "teal"))
     mesh_grid(cases, out / "mosspole-walls.png", elev=10.0, azim=-55.0)
+    import trimesh
+    w = PotParams(moss_pole="set", pole_reservoir=40.0, pole_wick=True, **FAST)
+    cut = lambda m: trimesh.intersections.slice_mesh_plane(
+        m, plane_normal=[0, 1, 0], plane_origin=[0, 0, 0], cap=True)
+    mesh_grid([("the sump, cut open: post, overflow, pierced flange",
+                cut(build_pole_base(w)), "sand"),
+               ("a segment, cut open: barbs at the crossings",
+                cut(build_pole_segment(w)), "sand"),
+               ("the cap, with the eyes the string ties off to",
+                build_pole_cap(w), "clay")],
+              out / "mosspole-wick.png", elev=8.0, azim=-90.0)
 
 
 def main(outdir: str = "docs/img") -> None:
