@@ -16,11 +16,13 @@ import trimesh
 
 from flowerpot import ParameterError, PotParams, audit
 from flowerpot.build import _boolean
-from flowerpot.mosspole import (PATTERNS, SHAPES, _FOOT_HOLES, _STRUT_MIN,
-                                across_flats, assembled_height,
-                                build_pole_base, build_pole_cap,
+from flowerpot.mosspole import (BARBS, PATTERNS, SHAPES, _FOOT_HOLES,
+                                _PILLAR_R, _STRUT_MIN, _SUMP_FREE,
+                                across_flats, assembled_height, barb_sites,
+                                barb_size, build_pole_base, build_pole_cap,
                                 build_pole_segment, open_area_fraction,
-                                pattern_grid, perimeter, plan, stacked)
+                                cap_plan, pattern_grid, perimeter, plan,
+                                section_area, stacked, sump_millilitres)
 
 FAST = dict(segments=96)
 SOLIDS = [s for s in SHAPES]
@@ -270,3 +272,187 @@ def test_another_size_still_stacks_and_still_prints(kw):
     for part in (base, build_pole_segment(p), build_pole_cap(p)):
         report = audit(part, p.overhang_limit_deg)
         assert part.is_watertight and report.overhang_faces == 0, report
+
+
+# ---------------------------------------------------------------------------
+# barbs: the nubs that hold the moss
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("barbs", BARBS)
+@pytest.mark.parametrize("shape", SOLIDS)
+def test_barbs_do_not_cost_the_segment_its_audit(barbs, shape):
+    p = _p(pole_shape=shape, pole_barbs=barbs)
+    seg = build_pole_segment(p)
+    report = audit(seg, p.overhang_limit_deg)
+    assert seg.is_watertight and report.overhang_faces == 0, report
+    assert len(seg.split(only_watertight=False)) == 1
+
+
+def test_the_ramp_under_a_barb_is_the_budget():
+    """Flat on top to hold the moss up, and the underside is not a choice:
+    it is exactly the slope the overhang limit allows."""
+    p = _p()
+    reach, rise, half = barb_size(p)
+    assert rise == pytest.approx(reach / plan(p)["s"])
+    assert math.degrees(math.atan2(reach, rise)) <= p.overhang_limit_deg
+    assert 0.0 < half <= 0.5 * pattern_grid(p)["strut"]
+
+
+def test_a_barb_never_plugs_an_opening():
+    """They go on before the openings are cut, so the count of holes is the
+    same with them as without."""
+    p = _p()
+    g = pattern_grid(p)
+    for barbs in BARBS:
+        seg = build_pole_segment(_p(pole_barbs=barbs))
+        assert audit(seg, 45.0).genus == g["cols"] * g["rows"] + 1, barbs
+
+
+def test_barbs_land_on_the_flat_of_a_face_not_on_a_corner():
+    """A flat-backed wedge has to sit on a flat.  On a polygon the corners
+    are where the section turns, so every barb has to keep off them."""
+    p = _p(pole_shape="square", pole_barbs="both")
+    sides = plan(p)["sides"]
+    facet = 2.0 * math.pi / sides
+    for z, a, _inward in barb_sites(p):
+        # distance to the nearest corner, in facets
+        off = abs(((a + 0.5 * facet) % facet) - 0.5 * facet) / facet
+        assert off < 0.35, f"a barb at {math.degrees(a):.1f} deg is on a corner"
+
+
+def test_inside_barbs_keep_clear_of_the_socket():
+    """The bottom of a segment is a socket with the spigot below it inside
+    it, so an inward barb down there is interference, not grip."""
+    p = _p(pole_barbs="inside")
+    k = plan(p)
+    assert all(z >= k["joint"] for z, _a, inward in barb_sites(p) if inward)
+    assert any(inward for _z, _a, inward in barb_sites(p))
+    # ... and the proof is that the stack still goes together
+    seg = build_pole_segment(p)
+    above = seg.copy()
+    above.apply_translation((0.0, 0.0, k["pitch"]))
+    assert _boolean("intersection", [seg, above]).volume < 1.0
+
+
+def test_outside_barbs_have_nothing_to_hit():
+    p = _p(pole_barbs="outside")
+    k = plan(p)
+    assert all(not inward for _z, _a, inward in barb_sites(p))
+    seg = build_pole_segment(p)
+    above = seg.copy()
+    above.apply_translation((0.0, 0.0, k["pitch"]))
+    assert _boolean("intersection", [seg, above]).volume < 1.0
+    assert seg.extents[0] > p.pole_diameter          # they stand proud
+
+
+# ---------------------------------------------------------------------------
+# the sump, and the string that reaches it
+# ---------------------------------------------------------------------------
+def test_the_base_holds_the_water_it_says_it_does():
+    p = _p(pole_reservoir=40.0)
+    k = plan(p)
+    assert k["sump"] == 40.0
+    assert sump_millilitres(p) == pytest.approx(
+        section_area(p, k["r_bore"]) * 40.0 / 1000.0, rel=1e-6)
+    assert sump_millilitres(p) > 50.0
+    assert sump_millilitres(_p()) == 0.0
+    # twice as deep is twice the water, because the cup has straight sides
+    assert (sump_millilitres(_p(pole_reservoir=80.0))
+            == pytest.approx(2.0 * sump_millilitres(p), rel=1e-6))
+
+
+def test_the_sump_is_what_makes_the_base_taller():
+    """It is the only thing that does: the water, plus the air over it."""
+    plain, wet = plan(_p()), plan(_p(pole_reservoir=40.0))
+    assert wet["base_rise"] - plain["base_rise"] == pytest.approx(
+        40.0 + _SUMP_FREE)
+
+
+def test_the_holes_in_the_base_are_counted_exactly():
+    """Six through the flange, one overflow if there is water to overflow,
+    one eye through the wick post.  A cup with an extra hole in it is a cup
+    that does not hold water, so the count is the test."""
+    assert audit(build_pole_base(_p()), 45.0).genus == _FOOT_HOLES
+    assert audit(build_pole_base(_p(pole_reservoir=40.0)),
+                 45.0).genus == _FOOT_HOLES + 1
+    assert audit(build_pole_base(_p(pole_reservoir=40.0, pole_wick=True)),
+                 45.0).genus == _FOOT_HOLES + 2
+    assert audit(build_pole_base(_p(pole_wick=True)),
+                 45.0).genus == _FOOT_HOLES + 1
+
+
+def test_the_flange_holes_drain_the_pot_and_not_the_cup():
+    """They are outside the collar, so the water in the cup never finds
+    them - slice the cup below the water line and it is a closed ring."""
+    p = _p(pole_reservoir=40.0)
+    k = plan(p)
+    base = build_pole_base(p)
+    z = k["floor"] + 0.5 * k["sump"]
+    ring = base.section(plane_origin=[0, 0, z], plane_normal=[0, 0, 1])
+    loops = [np.array(loop) for loop in ring.discrete]
+    inner = [lp for lp in loops
+             if np.hypot(lp[:, 0], lp[:, 1]).max() < k["r"] + 1.0]
+    assert len(inner) == 2, "the cup wall is not a closed ring at this height"
+
+
+@pytest.mark.parametrize("shape", SOLIDS)
+def test_a_wet_base_and_its_cap_still_print(shape):
+    p = _p(pole_shape=shape, pole_reservoir=40.0, pole_wick=True)
+    for part in (build_pole_base(p), build_pole_cap(p)):
+        report = audit(part, p.overhang_limit_deg)
+        assert part.is_watertight and report.overhang_faces == 0, report
+        assert len(part.split(only_watertight=False)) == 1
+
+
+def test_the_wick_can_reach_from_the_cap_to_the_water():
+    """Both ends have to be threadable: the eyes in the cap clear the
+    spigot buried in its socket, and the post stands in the sump."""
+    p = _p(pole_reservoir=40.0, pole_wick=True)
+    k, c = plan(p), cap_plan(p)
+    # an eye is a hole through a tube, so the tube's genus counts them
+    assert audit(build_pole_cap(p), 45.0).genus == 3
+    assert audit(build_pole_cap(_p()), 45.0).genus == 1
+    # above the spigot, so the string comes up the bore to them, and inside
+    # the straight collar rather than out on the flare
+    assert k["joint"] < c["eye_z"] < c["collar"]
+    assert cap_plan(_p())["collar"] < c["collar"]
+    # and the post stands in the sump for the loop to go under
+    base = build_pole_base(p)
+    core = base.section(plane_origin=[0, 0, k["floor"] + 2.0],
+                        plane_normal=[0, 0, 1])
+    middle = [lp for lp in core.discrete
+              if np.hypot(*np.array(lp).T[:2]).max() < 2.0 * _PILLAR_R]
+    assert len(middle) == 1, "there is no post in the sump"
+    assert not [lp for lp in build_pole_base(_p(pole_reservoir=40.0)).section(
+        plane_origin=[0, 0, k["floor"] + 2.0], plane_normal=[0, 0, 1]).discrete
+        if np.hypot(*np.array(lp).T[:2]).max() < 2.0 * _PILLAR_R]
+
+
+def test_the_stack_still_seats_with_the_water_and_the_string_in_it():
+    p = _p(pole_reservoir=40.0, pole_wick=True, pole_barbs="both")
+    base = build_pole_base(p)
+    one = _seated(p, base)
+    two = _seated(p, one)
+    cap = build_pole_cap(p)
+    cap.apply_translation((0.0, 0.0, two.bounds[1][2] - plan(p)["joint"]))
+    for a, b in ((one, base), (two, one), (cap, two)):
+        assert _boolean("intersection", [a, b]).volume < 1.0
+
+
+def test_the_sump_is_called_a_sump():
+    """It feeds the bottom of the column, not the top of it, and saying so
+    is the difference between a feature and a disappointment."""
+    warn = _p(pole_reservoir=40.0, pole_wick=True).validate()
+    assert any("sump, not" in w and "ml" in w for w in warn), warn
+    dry = _p(pole_reservoir=40.0).validate()
+    assert any("nothing reaching down to it" in w for w in dry), dry
+    loose = _p(pole_wick=True).validate()
+    assert any("pot's soil" in w for w in loose), loose
+
+
+def test_sump_guardrails():
+    with pytest.raises(ParameterError, match="unknown pole_barbs"):
+        _p(pole_barbs="spikes").validate()
+    with pytest.raises(ParameterError, match="pole_reservoir"):
+        _p(pole_reservoir=3.0).validate()
+    with pytest.raises(ParameterError, match="pole_reservoir"):
+        _p(pole_reservoir=400.0).validate()

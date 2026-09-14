@@ -456,6 +456,65 @@ it. The openings are therefore as wide as the budget allows and no wider.
 | `slots` | the same opening with a straight waist let into it | fewer, taller windows: easier to pack, more open, less to grip |
 | `solid` | no openings | a plain climbing stake |
 
+Columns are a whole number per face — an **even** number, so they straddle the
+face centre instead of sitting on it. That leaves the middle of every face
+solid, which is where the barbs go and where a corner never is.
+
+`pole_open` splits each cell between opening and strut; what stops it going to
+1 is the strut left behind, and below about two extrusions wide the generator
+refuses with the number it wanted.
+
+### Barbs
+
+![the sump, the barbs and the eyes](docs/img/mosspole-wick.png)
+
+`pole_barbs` puts little shelves on the wall at the crossings of the pattern.
+Each one is **flat on top**, because that is the face the moss rests on, and
+its underside is not a choice: the ramp *is* the overhang budget, so the rise
+is the reach divided by the slope and it lands exactly on the limit.
+
+* `inside` (the default) stops the packed column settling away from the wall
+  and slumping down the pole over a season.
+* `outside` holds a sheet of moss you have wrapped round the pole while you get
+  the twine on, and gives roots something to sit against.
+* `both`, or `none` for a smooth bore.
+
+They go on **before** the openings are cut, so an opening always wins — a barb
+can never end up plugging one. Inside ones start above the socket at the bottom
+of a segment, because down there the bore is full of the spigot below it and a
+barb would be interference rather than grip.
+
+### The sump, and the string
+
+`pole_reservoir` closes the base into a cup and deepens it, so it holds water
+under the column — about 95 ml at 40 mm on a 55 mm pole. **It is a sump, not a
+tank.** What fills it is what you pour through the cap and what the moss does
+not hold; what empties it is the bottom of the moss. A cotton wick lifts water
+about a hand's width before the flow stops being worth counting, so the sump
+feeds the bottom of the pole and the cap still feeds the rest. An overflow
+through the wall sets the level, and what goes over it waters the pot — which
+is where it was going anyway.
+
+`pole_wick` adds the fittings for the string: **two eyes** through the cap's
+collar, and a **post** standing in the sump for the loop to go under. Thread it
+before you pack, so the string runs down the middle of the column and back up
+rather than lying against the wall. Its real job is less lifting than
+spreading — a wet string down the core wets the whole height when you pour,
+instead of the water finding one channel and running past the rest.
+
+The cap's collar grows when it carries the eyes, because an eye has to sit
+*above* the spigot buried in the socket; any lower and it opens into the
+half-millimetre gap round the spigot, where no string will go.
+
+```bash
+python -m flowerpot --moss-pole set --pole-reservoir 40 --pole-wick
+python -m flowerpot --moss-pole segment --pole-barbs both
+```
+
+The holes in the base are counted exactly in the tests — six through the
+flange, one overflow if there is water to overflow, one eye through the post —
+because a cup with an extra hole in it is a cup that does not hold water.
+
 Columns are a whole number per face, so an opening never lands on a corner —
 the corner is the stiffest part of the section and the part you tie a stem to.
 The cell they sit in is sized in **millimetres**, not as a fraction of the pole,
@@ -900,7 +959,9 @@ raked-soil lid, written as `<name>_soil_cap.*`).
 `"cap"`), `pole_diameter` (55.0 across the flats), `pole_segment_height`
 (150.0), `pole_segments` (3), `pole_shape` (`"square"` | `"hex"` | `"round"`),
 `pole_pattern` (`"lattice"` | `"slots"` | `"solid"`), `pole_open` (0.68),
-`pole_rows` (0 = auto).
+`pole_rows` (0 = auto), `pole_barbs` (`"none"` | `"inside"` | `"outside"` |
+`"both"`), `pole_reservoir` (0.0 mm of water in the base), `pole_wick`
+(False).
 
 **Dish and keel** — `cradle` (`"none"` | `"set"` | `"pot"` | `"dish"`),
 `cradle_diameter` (120.0 at the joint), `cradle_height` (108.0 assembled),
