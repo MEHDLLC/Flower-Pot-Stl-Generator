@@ -582,6 +582,19 @@ def hanger_wall_figure(out: Path) -> None:
               out / "hanger-wall-parts.png", elev=42.0, azim=-60.0)
 
 
+def wallpot_figure(out: Path) -> None:
+    from flowerpot.wallpot import (assembled, build_wall_cleat,
+                                   build_wall_pot)
+    p = PotParams(wall_pot="set", drainage_pattern="none",
+                  bottom_diameter=130.0, **FAST)
+    mesh_grid([("from the room: no bracket at all", assembled(p), "sage")],
+              out / "wallpot.png", elev=6.0, azim=-35.0)
+    mesh_grid([("the back, with the rail in its pocket", assembled(p), "sage"),
+               ("the pot", build_wall_pot(p), "clay"),
+               ("the rail", build_wall_cleat(p), "clay")],
+              out / "wallpot-parts.png", elev=16.0, azim=150.0)
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -616,6 +629,7 @@ def main(outdir: str = "docs/img") -> None:
     sleeve_figure(out)
     hanger_figure(out)
     hanger_wall_figure(out)
+    wallpot_figure(out)
 
 
 if __name__ == "__main__":

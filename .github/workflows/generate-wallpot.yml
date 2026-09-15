@@ -1,0 +1,87 @@
+# Actions -> "Generate · wall pot" -> Run workflow.
+# A pot with the wall mount built into its back: flat across the back, with
+# the female half of a French cleat as a pocket inside that flat.  Hung,
+# there is nothing of the mount to see.
+name: "Generate · wall pot"
+
+on:
+  workflow_dispatch:
+    inputs:
+      wall_pot:
+        description: "What to write"
+        type: choice
+        default: set
+        options: [set, pot, cleat]
+      pot_style:
+        description: "Outer style"
+        type: choice
+        default: classic_tapered
+        options: [classic_tapered, low_poly_faceted, ribbed_spiral, hexagonal, square]
+      surface_texture:
+        description: "Relief pressed into the wall"
+        type: choice
+        default: none
+        options: [none, herringbone, honeycomb, diamonds, waves]
+      height:
+        description: "Pot height in mm"
+        type: string
+        default: "145"
+      top_diameter:
+        description: "Across the top in mm (under the rim)"
+        type: string
+        default: "150"
+      bottom_diameter:
+        description: "Across the base in mm"
+        type: string
+        default: "105"
+      wall_pot_round:
+        description: "Circumference left round where the pot is NARROWEST (0 = as flat as it allows)"
+        type: string
+        default: "0"
+      wall_pot_rail:
+        description: "Rail length in mm (0 = as long as the flat back has room for)"
+        type: string
+        default: "0"
+      wall_pot_screws:
+        description: "Screws in the rail (0 = as many as the pull-out needs)"
+        type: string
+        default: "0"
+      wall_pot_screw_bore:
+        description: "Screw shank in mm (the head is countersunk)"
+        type: string
+        default: "4.5"
+      drainage_pattern:
+        description: "Drainage (a wall pot with holes waters the wall)"
+        type: choice
+        default: none
+        options: [none, center, ring, grid]
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: sage
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  wallpot:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Wall pot: ${{ inputs.wall_pot }}, ${{ inputs.pot_style }}"
+      artifact: "wallpot-${{ inputs.wall_pot }}"
+      cli_args: >-
+        --name wallpot
+        --wall-pot ${{ inputs.wall_pot }}
+        --pot-style ${{ inputs.pot_style }}
+        --surface-texture ${{ inputs.surface_texture }}
+        --height ${{ inputs.height }}
+        --top-diameter ${{ inputs.top_diameter }}
+        --bottom-diameter ${{ inputs.bottom_diameter }}
+        --wall-pot-round ${{ inputs.wall_pot_round }}
+        --wall-pot-rail ${{ inputs.wall_pot_rail }}
+        --wall-pot-screws ${{ inputs.wall_pot_screws }}
+        --wall-pot-screw-bore ${{ inputs.wall_pot_screw_bore }}
+        --drainage-pattern ${{ inputs.drainage_pattern }}
+        --color ${{ inputs.color }}
+        ${{ inputs.extra_args }}

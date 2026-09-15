@@ -78,7 +78,7 @@ def export_pot(
                       "sleeve_pot_height", "sleeve_well", "sleeve_base",
                       "hanger_pot_top", "hanger_pot_base",
                       "hanger_pot_height", "hanger_drop", "hanger_reach",
-                      "hanger_cleat_length")})
+                      "hanger_cleat_length", "wall_pot_rail")})
 
     for warning in params.validate():
         print(f"  WARN {warning}", file=sys.stderr)
@@ -146,6 +146,13 @@ def export_pot(
                 jobs.append((build_hanger_rib, f"{name}_rib", not jobs))
             if params.hanger in ("yoke", "set"):
                 jobs.append((build_hanger_yoke, f"{name}_yoke", not jobs))
+    elif params.wall_pot != "none":
+        from .wallpot import build_wall_cleat, build_wall_pot
+        jobs: list[tuple] = []
+        if params.wall_pot in ("pot", "set"):
+            jobs.append((build_wall_pot, f"{name}_pot", True))
+        if params.wall_pot in ("cleat", "set"):
+            jobs.append((build_wall_cleat, f"{name}_cleat", not jobs))
     elif params.sleeve:
         from .sleeve import build_sleeve
         jobs: list[tuple] = [(build_sleeve, f"{name}_sleeve", True)]

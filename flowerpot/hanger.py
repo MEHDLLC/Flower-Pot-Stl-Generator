@@ -149,16 +149,23 @@ _BOSS = 9.0              # solid middle of the top ring
 # --- the wall mount ---------------------------------------------------------
 _CLEAT_T = 9.0           # rail thickness - and so the stand-off it creates
 _CLEAT_BODY = 14.0       # straight part under the bevel; the screws live here
+_CLEAT_RISE = 1.2        # how fast the bevel climbs away from the wall.
+#                          NOT 1: a 45 deg mating face is a 45 deg overhang
+#                          for whatever has to print the socket side of it,
+#                          which is exactly the budget with nothing left. A
+#                          steeper rip prints (40 deg), wedges harder on the
+#                          way down, and holds the same way against tipping -
+#                          the restraint works for any rise above zero.
 _CLEAT_FIT = 0.5         # slack between the rail and the notch that hooks it
 _SCREW_INSET = 8.5       # first screw, in from the end of the rail
 _RIB_T_MIN = 4.8         # a rib is on edge and carries half the pot
 _RIB_H_MIN = 110.0       # ... and its height is the couple arm, so it is tall
 _RIB_H_FACTOR = 2.6      # height, as a multiple of what bending alone asks
-_RIB_LIP = 18.0          # rib carried on above the notch's top corner
+_RIB_LIP = 20.0          # rib carried on above the notch's top corner
 _RIB_BEAR_MIN = 40.0     # least back edge left bearing flat on the wall
 _RIB_WEB = 6.0           # material left round the yoke's slot
 _RIB_INSET = 22.0        # ribs, in from the ends of the rail
-_NOTCH_DROP = 14.0       # notch taller than the rail, so it hangs easily
+_NOTCH_DROP = 18.0       # notch taller than the rail, so it hangs easily
 _CSK_DEG = 40.0          # countersink half-angle: 45 would be the limit
 _SPREAD_MIN = 60.0
 _YOKE_D_MIN = 32.0
@@ -536,14 +543,15 @@ def _screw_span(l_c: float, n: int) -> float:
     return (l_c - 2.0 * _SCREW_INSET) / max(n - 1, 1)
 
 
-def _cleat_stress(force: float, l_c: float, n: int) -> float:
-    """The rail between two screws, bent by the ribs pulling off the wall.
+def cleat_stress(pull: float, l_c: float, n: int) -> float:
+    """The rail between two screws, bent by whatever is pulling it off.
 
-    Both ribs are put at midspan of one bay, which no pair of ribs can
-    actually manage - it is the cheapest honest way to be conservative.
+    The whole pull is put at midspan of one bay, which nothing hanging on
+    the rail can actually manage - it is the cheapest honest way to be
+    conservative.
     """
-    return 3.0 * force * _screw_span(l_c, n) / (
-        (_CLEAT_BODY + _CLEAT_T) * _CLEAT_T ** 2)
+    return 1.5 * pull * _screw_span(l_c, n) / (
+        (_CLEAT_BODY + _CLEAT_RISE * _CLEAT_T) * _CLEAT_T ** 2)
 
 
 def _yoke_modulus(t: float, d: float, r: float) -> float:
@@ -571,7 +579,7 @@ def wall_plan(p: PotParams) -> dict:
     if not 60.0 <= l_c <= 400.0:
         raise ParameterError("hanger_cleat_length should be 60-400 mm")
     t_c, d_gap = _CLEAT_T, _CLEAT_T + _CLEAT_FIT
-    h_c = _CLEAT_BODY + t_c
+    h_c = _CLEAT_BODY + _CLEAT_RISE * t_c
     t_rib = max(_RIB_T_MIN, p.wall_thickness)
     t_yoke = t_rib
     spread = max(_SPREAD_MIN, l_c - 2.0 * _RIB_INSET)
@@ -596,7 +604,7 @@ def wall_plan(p: PotParams) -> dict:
     # the notch holds it in up top.  The bearing is taken at the middle of
     # that face rather than the third of it a wedge of pressure would really
     # act at, which shortens the arm and so raises the force
-    arm = (y_nt + 0.5 * t_c) - 0.5 * y_nb
+    arm = (y_nt + 0.5 * _CLEAT_RISE * t_c) - 0.5 * y_nb
     force = moment / arm
 
     # the yoke: a beam between the ribs with the pot hung at its middle,
@@ -622,7 +630,7 @@ def wall_plan(p: PotParams) -> dict:
     n_screw = int(p.hanger_screws)
     if n_screw <= 0:                          # as many as the pull-out needs
         n_screw = 2
-        while n_screw < 8 and _cleat_stress(force, l_c, n_screw) > _SIGMA:
+        while n_screw < 8 and cleat_stress(2.0 * force, l_c, n_screw) > _SIGMA:
             n_screw += 1
     elif n_screw < 2:
         raise ParameterError("hanger_screws should be 2 or more, or 0 to let "
@@ -672,7 +680,7 @@ def wall_stresses(p: PotParams) -> dict:
     return dict(
         rib=rib_bending(p)[0],
         yoke=w["m_yoke"] / _yoke_modulus(w["t_yoke"], w["d_yoke"], _EYE_R),
-        cleat=_cleat_stress(w["force"], w["l_c"], w["n_screw"]))
+        cleat=cleat_stress(2.0 * w["force"], w["l_c"], w["n_screw"]))
 
 
 def wall_governs(p: PotParams) -> str:
@@ -791,32 +799,42 @@ def _box3(x0: float, x1: float, y0: float, y1: float, z0: float, z1: float
     return box
 
 
-def build_hanger_cleat(p: PotParams) -> trimesh.Trimesh:
-    """The wall rail.  Prints on its BACK, so the 45 deg bevel faces up."""
-    check_hanger(p)
-    w = wall_plan(p)
-    t_c, h_c, l_c = w["t_c"], w["h_c"], w["l_c"]
+def cleat_solid(sec: Section, l_c: float, n_screw: int, span: float,
+                bore: float, head: float) -> trimesh.Trimesh:
+    """The wall rail itself - shared by everything that hangs on one.
+
+    Modelled lying FACE DOWN, which is how it prints: the bevel then faces
+    up and the countersinks are cones in the bed face.
+    """
+    t_c = _CLEAT_T
+    h_c = _CLEAT_BODY + _CLEAT_RISE * t_c
     # (height, thickness): full thickness up to the rip, then the bevel
     # running back to the wall.  The long point of a French cleat is the one
     # against the wall, and that is the edge the ribs hook over
-    body = _prism([(0.0, 0.0), (h_c, 0.0), (h_c - t_c, t_c), (0.0, t_c)],
+    body = _prism([(0.0, 0.0), (h_c, 0.0), (_CLEAT_BODY, t_c), (0.0, t_c)],
                   -0.5 * l_c, 0.5 * l_c)
-    sec = _round(p)
-    depth = (w["head"] - w["bore"]) / math.tan(math.radians(_CSK_DEG))
+    depth = (head - bore) / math.tan(math.radians(_CSK_DEG))
     cuts = []
-    for i in range(w["n_screw"]):
-        x = -0.5 * l_c + _SCREW_INSET + i * w["span"]
+    for i in range(n_screw):
+        x = -0.5 * l_c + _SCREW_INSET + i * span
         # the heads go on the bed face, so the countersink is a cone that
         # narrows GOING UP and has to stay inside the overhang budget: a
         # 90 deg countersink is exactly 45 deg of it, so this is an 80 deg
         # one, which is what a wood screw wants anyway.  Flush heads are
         # also what let a rib sit anywhere along the rail
-        cut = lathe([(w["head"], -1.0), (w["head"], 0.0),
-                     (w["bore"], depth), (w["bore"], t_c + 1.0)], sec,
-                    decorate=False)
+        cut = lathe([(head, -1.0), (head, 0.0),
+                     (bore, depth), (bore, t_c + 1.0)], sec, decorate=False)
         cut.apply_translation((x, 0.5 * _CLEAT_BODY, 0.0))
         cuts.append(cut)
     return _finish(_boolean("difference", [body] + cuts), center=False)
+
+
+def build_hanger_cleat(p: PotParams) -> trimesh.Trimesh:
+    """The wall rail.  Prints FACE DOWN, so the bevel faces up."""
+    check_hanger(p)
+    w = wall_plan(p)
+    return cleat_solid(_round(p), w["l_c"], w["n_screw"], w["span"],
+                       w["bore"], w["head"])
 
 
 def build_hanger_rib(p: PotParams) -> trimesh.Trimesh:
@@ -835,8 +853,8 @@ def build_hanger_rib(p: PotParams) -> trimesh.Trimesh:
     # RISES away from the wall, so that tipping drives it into the rail
     # rather than off it.  Everything below it stays flat against the wall
     notch = _prism_z([(-1.0, w["y_nb"]), (d_gap, w["y_nb"]),
-                      (d_gap, w["y_nt"] + d_gap), (-1.0, w["y_nt"] - 1.0)],
-                     -1.0, t + 1.0)
+                      (d_gap, w["y_nt"] + _CLEAT_RISE * d_gap),
+                      (-1.0, w["y_nt"] - _CLEAT_RISE)], -1.0, t + 1.0)
     half_x = 0.5 * (w["t_yoke"] + _SLOT_FIT)
     slot = _box3(w["reach"] - half_x, w["reach"] + half_x,
                  w["z_yoke"] - 0.5 * w["slot_h"],
