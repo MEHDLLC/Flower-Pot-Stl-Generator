@@ -16,7 +16,8 @@ import trimesh
 
 from flowerpot import ParameterError, PotParams, audit
 from flowerpot.build import _boolean, lathe
-from flowerpot.hanger import (PARTS, TOPS, WALL_PARTS, _CSK_DEG,
+from flowerpot.hanger import (PARTS, TOPS, WALL_PARTS, _CLEAT_RISE,
+                              _CSK_DEG,
                               _RIB_BEAR_MIN, _SIGMA, _SLOT_FIT, _TILT_MAX,
                               _WALL_CLEAR, _YOKE_LIFT, _round, _yoke_modulus,
                               arm_frame, arm_clearance, assembled,
@@ -329,6 +330,7 @@ def test_tipping_the_rib_the_way_the_load_does_drives_it_into_the_rail():
     that motion jams; rip it the usual way round and the same motion slides
     the two bevels apart, which is why a picture rail cannot hold a shelf."""
     p = _w()
+    assert _CLEAT_RISE > 1.0, "a 45 deg mating face is a 45 deg overhang"
     rib, cleat = seated_rib(p, -1), seated_cleat(p)
     assert _clash(rib, cleat) < 1.0
     tipped = rib.copy()
@@ -525,7 +527,8 @@ def test_wall_guardrails():
     with pytest.raises(ParameterError, match="hanger_screws should be"):
         _w(hanger_screws=1).validate()
     with pytest.raises(ParameterError, match="do not fit along a"):
-        _w(hanger_load=25.0, hanger_cleat_length=60.0).validate()
+        _w(hanger_load=25.0, hanger_reach=300.0, hanger_cleat_length=60.0,
+           hanger_pot_size="10in", hanger_drop=360.0).validate()
     for part in WALL_PARTS:
         with pytest.raises(ParameterError, match="part of the wall mount"):
             _p(hanger=part).validate()

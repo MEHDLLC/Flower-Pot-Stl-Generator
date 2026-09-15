@@ -379,6 +379,29 @@ class PotParams:
     #                                  countersunk 45 deg, which prints
 
     # ------------------------------------------------------------------
+    # 5n. Wall pot (the mount is IN the pot, not a bracket round it)
+    # ------------------------------------------------------------------
+    wall_pot: str = "none"           # "set" writes the pot and its rail;
+    #                                  "pot" or "cleat" writes one. A wall
+    #                                  pot IS a pot: pot_style, vase_profile,
+    #                                  surface_texture and the rim all work
+    #                                  on it. It is flat across the back and
+    #                                  the French cleat is a pocket inside
+    #                                  that flat, so nothing of the mount
+    #                                  shows once it is hung.
+    wall_pot_round: float = 0.0      # fraction of the circumference left
+    #                                  round where the pot is NARROWEST -
+    #                                  0.5 (half a pot) to about 0.95. The
+    #                                  back is ONE plane, so a tapered pot
+    #                                  is less round at its wide end and the
+    #                                  generator reports both numbers.
+    #                                  0 = as flat as the pot allows
+    wall_pot_rail: float = 0.0       # the rail, along the wall. 0 = as long
+    #                                  as the flat back has room for
+    wall_pot_screws: int = 0         # 0 = as many as the pull-out needs
+    wall_pot_screw_bore: float = 4.5  # the screw's shank
+
+    # ------------------------------------------------------------------
     # 5l. Nursery pot sleeve (a cover for the pot the plant came in)
     # ------------------------------------------------------------------
     sleeve: bool = False             # the nursery pot drops in, pot and all.
@@ -801,6 +824,19 @@ class PotParams:
                 raise ParameterError(
                     "hanger is its own set - it does not combine with the "
                     "pots or the other product flags")
+        if self.wall_pot != "none":
+            from .wallpot import check_wall_pot
+            warn += check_wall_pot(self)
+            if (self.sleeve or self.hanger != "none"
+                    or self.underpot != "none" or self.moss_pole != "none"
+                    or self.cradle != "none" or self.replica != "none"
+                    or self.yard_plant != "none" or self.bouquet or self.stem
+                    or self.self_watering or self.hydro_tower
+                    or self.reservoir_insert or self.modular_kit != "none"
+                    or self.jar_greenhouse):
+                raise ParameterError(
+                    "wall_pot is a pot in its own right - it does not "
+                    "combine with the other product flags")
         if self.sleeve:
             from .sleeve import check_sleeve
             warn += check_sleeve(self)

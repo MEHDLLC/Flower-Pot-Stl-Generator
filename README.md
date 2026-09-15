@@ -536,6 +536,87 @@ python -m flowerpot --hanger set --hanger-mount wall --hanger-load 10 \
 python -m flowerpot --hanger rib --hanger-mount wall   # just print one more
 ```
 
+## Wall pot
+
+![a wall pot](docs/img/wallpot.png)
+
+The hanging cradle and the wall bracket above are **gadgets** — they grip a
+pot somebody else made. That is the right answer for a nursery pot and the
+wrong one when you are printing the pot anyway: a bracket you have to look at
+is a bracket that should have been part of the pot.
+
+So a wall pot is round for most of its circumference and **flat across the
+back**, and the female half of a French cleat is a pocket *inside* that flat.
+The rail screws to the wall and disappears into it. Hung, there is no bracket:
+the pot grows out of the wall.
+
+```bash
+python -m flowerpot --wall-pot set --bottom-diameter 130 --drainage-pattern none
+python -m flowerpot --wall-pot set --pot-style hexagonal --wall-pot-round 0.8
+python -m flowerpot --wall-pot cleat            # just another rail
+```
+
+**A wall pot is a pot** — same leverage as the sleeve. `pot_style`,
+`vase_profile`, `surface_texture`, the rim and the colours all work on it,
+because the outside is the same builder doing its usual job. Two planes and a
+pocket are the whole difference.
+
+![the back and the parts](docs/img/wallpot-parts.png)
+
+### Which way you rip the cleat is the entire mount
+
+A full pot of wet soil sitting out from a wall is a **cantilever**, and a
+French cleat carries no moment on its own — only shear. Two things fix that,
+and they are the same two the wall bracket needed:
+
+- The back **bears flat on the wall** either side of the pocket and below it,
+  so the moment becomes a couple: the back pushes in low down, the pocket's
+  ceiling holds out up top.
+- The rail's bevel **rises away from the wall**. Tip the pot the way a full one
+  tips it — top out, bottom in — and the pocket's ceiling drives down and out
+  *into* the rail. Ripped the other way, the way a picture rail usually is, the
+  same motion slides the two faces apart. Get this backwards and you have a pot
+  that hangs beautifully until it is full.
+
+That orientation also means the pot cannot be pulled straight off the wall. To
+take it down you lift it past the rail's depth first, and the generator says how
+far.
+
+**The rise is 1.2, not 1.** A 45° mating face is a 45° overhang for whoever has
+to print the socket side of it, and here that is the pot: it prints mouth up, so
+the pocket's ceiling is a roof. A steeper rip prints at 40° with margin to
+spare, wedges *harder* on the way down, and restrains the tipping just the
+same — the restraint works for any rise above zero.
+
+### One plane, two roundnesses
+
+`wall_pot_round` is quoted where the pot is **narrowest**, and that is not a
+detail. The back is one plane, so a tapered pot is roundest at the end the plane
+barely reaches. Quote it at the widest instead and almost every pot asks for a
+plane its own foot cannot reach — so the generator reports both numbers (87% at
+the foot, 70% at the mouth, on the default). `0` takes as much as the pot allows.
+
+### The back is only thick where the pocket is
+
+The pocket is the rail's thickness deep, so the back needs that plus a skin.
+Making the *whole* back that thick is most of a kilo of plastic for nothing, so
+it is a pad on the inside of the back wall — ramped underneath so it prints —
+and nowhere else.
+
+### It works out what it will weigh
+
+This is the one thing here nobody has to type in. Every other mount has to be
+told its load; this one owns the cavity the soil goes in, so the load, the
+centre of that soil and the moment are all **derived** — including where the
+soil's centre of mass sits once the back plane has taken a slice off every disc
+of it, which is what the moment is actually about. The sum is exact, and there
+is a test that says the mesh agrees with it.
+
+The numbers come out small (2.8 kg and 1.9 N·m on the default), and the finding
+is worth stating plainly: **the pot's own back is never what limits this.** The
+rail in bending between its screws is, and after that it is the wall. The screws
+are the part this generator does not make.
+
 ## Nursery sleeve
 
 ![three sleeves](docs/img/sleeve.png)
@@ -1238,6 +1319,11 @@ raked-soil lid, written as `<name>_soil_cap.*`).
 `replica_pot_top` (152.4), `replica_pot_base` (119.38), `replica_pot_height`
 (139.95), `replica_standoff` (25.0), `replica_plumbing` (True).
 
+**Wall pot** — `wall_pot` (`"none"` | `"set"` | `"pot"` | `"cleat"`),
+`wall_pot_round` (0.0 = as flat as the pot allows), `wall_pot_rail` (0.0 =
+as long as the flat back has room for), `wall_pot_screws` (0 = as many as the
+pull-out needs), `wall_pot_screw_bore` (4.5). Every pot parameter applies too.
+
 **Hanging cradle** — `hanger` (`"none"` | `"set"` | `"base"` | `"arm"` |
 `"top"`, plus `"cleat"` | `"rib"` | `"yoke"` on a wall mount),
 `hanger_pot_size` / `_top` / `_base` / `_height` (as the sleeve),
@@ -1386,6 +1472,7 @@ flowerpot/
   underpot.py   tray, risers and drainage mesh for a pot you did not print
   sleeve.py     a cover for the nursery pot the plant came in
   hanger.py     flat parts that hang a pot from a hook or a wall cleat
+  wallpot.py    a pot with the French cleat built into its flat back
   colors.py     the palette and hex parsing
   printers.py   machine profiles + the slicer project payload
   threemf.py    minimal colored-3MF writer (thumbnail + project settings)

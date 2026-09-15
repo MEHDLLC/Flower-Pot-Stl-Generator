@@ -172,6 +172,22 @@ PARAMS = dict(
     hanger_screws=0,          # 0 = as many as the pull-out needs
     hanger_screw_bore=4.5,    # screw shank; the head is countersunk 80 deg
 
+    # -- wall pot (the mount is IN the pot, not a bracket round it) ----------
+    wall_pot="none",          # "set" writes the pot and its rail; "pot" or
+    #                           "cleat" writes one.  A wall pot IS a pot -
+    #                           pot_style, vase_profile, surface_texture and
+    #                           the rim all work on it.  Flat across the
+    #                           back, with the French cleat as a pocket
+    #                           INSIDE that flat: nothing of the mount shows
+    wall_pot_round=0.0,       # circumference left round where the pot is
+    #                           NARROWEST (0.5-0.95).  One plane, so a
+    #                           tapered pot reads less round at its wide
+    #                           end.  0 = as flat as the pot allows
+    wall_pot_rail=0.0,        # the rail along the wall; 0 = as long as the
+    #                           flat back has room to hide
+    wall_pot_screws=0,        # 0 = as many as the pull-out needs
+    wall_pot_screw_bore=4.5,  # the screw's shank
+
     # -- nursery sleeve (a cover for the pot the plant came in) --------------
     sleeve=False,             # the nursery pot drops in, pot and all.  A
     #                           sleeve IS a pot: pot_style, surface_texture
