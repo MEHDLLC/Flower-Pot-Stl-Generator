@@ -145,11 +145,13 @@ PARAMS = dict(
     #                           0 takes the bucket's depth and no water
     replica_plumbing=True,    # ribs, overflow, fill notch and wick cup
 
-    # -- hanging cradle (three flat parts that hang a pot) -------------------
-    hanger="none",            # "set" writes all three; "base", "arm" or
-    #                           "top" writes one.  EVERY part prints FLAT,
-    #                           as modelled - a load-bearing part printed
-    #                           standing up is pulled apart across its layers
+    # -- hanging cradle (flat parts that hang a pot) -------------------------
+    hanger="none",            # "set" writes the lot; "base", "arm" or "top"
+    #                           writes one, and with a wall mount also
+    #                           "cleat", "rib" or "yoke".  EVERY part prints
+    #                           FLAT, as modelled - a load-bearing part
+    #                           printed standing up is pulled apart across
+    #                           its layer lines
     hanger_pot_size="custom", # or "3in".."12in"
     hanger_pot_top=152.4,     # the pot, across the top
     hanger_pot_base=114.3,    # ... across the base
@@ -160,6 +162,15 @@ PARAMS = dict(
     #                           One arm is assumed slack.
     hanger_top="hole",        # "hole" | "slot" (webbing) | "ring" (rope)
     hanger_clearance=8.0,     # how far the arms run off the pot
+    hanger_mount="ceiling",   # "wall" adds a French cleat, two ribs and the
+    #                           yoke between them.  A wall bracket is a
+    #                           cantilever, not a hook, so those are sized
+    #                           off the moment and the cleat is ripped so
+    #                           that tipping JAMS it instead of freeing it
+    hanger_reach=150.0,       # wall to the point the pot hangs from
+    hanger_cleat_length=120.0,  # the rail, along the wall
+    hanger_screws=0,          # 0 = as many as the pull-out needs
+    hanger_screw_bore=4.5,    # screw shank; the head is countersunk 80 deg
 
     # -- nursery sleeve (a cover for the pot the plant came in) --------------
     sleeve=False,             # the nursery pot drops in, pot and all.  A

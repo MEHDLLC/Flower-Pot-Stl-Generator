@@ -345,11 +345,13 @@ class PotParams:
     # ------------------------------------------------------------------
     # 5m. Hanging pot cradle (three flat parts, printed lying down)
     # ------------------------------------------------------------------
-    hanger: str = "none"             # "set" writes all three; "base", "arm"
-    #                                  or "top" writes one.  EVERY part
-    #                                  prints FLAT, as modelled: a part that
-    #                                  carries a hanging pot standing up is
-    #                                  being pulled apart across its layers.
+    hanger: str = "none"             # "set" writes the lot; "base", "arm"
+    #                                  or "top" writes one, and with a wall
+    #                                  mount also "cleat", "plate", "stay".
+    #                                  EVERY part prints FLAT, as modelled:
+    #                                  a part that carries a hanging pot
+    #                                  standing up is being pulled apart
+    #                                  across its layers.
     hanger_pot_size: str = "custom"  # or a nominal nursery size, "3in" ...
     #                                  "12in", which fills in all three below
     hanger_pot_top: float = 152.4    # the pot, across the top
@@ -365,6 +367,16 @@ class PotParams:
     hanger_top: str = "hole"         # "hole" for a hook, "slot" for webbing,
     #                                  "ring" to pass a rope through
     hanger_clearance: float = 8.0    # how far the arms run off the pot
+    hanger_mount: str = "ceiling"    # "wall" adds a French cleat, the plate
+    #                                  that hangs on it and the rib that
+    #                                  carries the reach.  A wall bracket is
+    #                                  a cantilever, not a hook, so those
+    #                                  three are sized off the moment.
+    hanger_reach: float = 150.0      # wall to the point the pot hangs from
+    hanger_cleat_length: float = 120.0  # the rail, along the wall
+    hanger_screws: int = 0           # 0 = as many as the pull-out needs
+    hanger_screw_bore: float = 4.5   # the screw's shank; the head is
+    #                                  countersunk 45 deg, which prints
 
     # ------------------------------------------------------------------
     # 5l. Nursery pot sleeve (a cover for the pot the plant came in)
