@@ -145,6 +145,22 @@ PARAMS = dict(
     #                           0 takes the bucket's depth and no water
     replica_plumbing=True,    # ribs, overflow, fill notch and wick cup
 
+    # -- hanging cradle (three flat parts that hang a pot) -------------------
+    hanger="none",            # "set" writes all three; "base", "arm" or
+    #                           "top" writes one.  EVERY part prints FLAT,
+    #                           as modelled - a load-bearing part printed
+    #                           standing up is pulled apart across its layers
+    hanger_pot_size="custom", # or "3in".."12in"
+    hanger_pot_top=152.4,     # the pot, across the top
+    hanger_pot_base=114.3,    # ... across the base
+    hanger_pot_height=144.8,  # ... and standing
+    hanger_arms=3,            # 3-5; three hangs level on its own
+    hanger_drop=240.0,        # base ring to top ring
+    hanger_load=5.0,          # kg: pot, soil and water at their heaviest.
+    #                           One arm is assumed slack.
+    hanger_top="hole",        # "hole" | "slot" (webbing) | "ring" (rope)
+    hanger_clearance=8.0,     # how far the arms run off the pot
+
     # -- nursery sleeve (a cover for the pot the plant came in) --------------
     sleeve=False,             # the nursery pot drops in, pot and all.  A
     #                           sleeve IS a pot: pot_style, surface_texture

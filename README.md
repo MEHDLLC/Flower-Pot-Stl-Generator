@@ -395,6 +395,81 @@ than quietly handing you something different from the photograph.
   separate because hanging it off the pot's floor would leave that floor
   spanning the whole pot with nothing under it.
 
+## Hanging cradle
+
+![hanging](docs/img/hanger.png)
+
+Three flat parts that hang a pot. Everything else in this generator is held
+up by the bench; this is not, and a hanging pot is a **sustained tensile load**
+on printed plastic — the one thing FDM is worst at. The whole design is
+arranged round that.
+
+```bash
+python -m flowerpot --hanger set --hanger-pot-size 6in --hanger-load 5
+python -m flowerpot --hanger set --hanger-arms 4 --hanger-top slot
+python -m flowerpot --hanger arm --hanger-drop 320 --hanger-pot-size 8in
+```
+
+### Print orientation is the design
+
+A printed part is weakest **across** its layer lines. An arm printed standing
+up is a stack of discs being pulled apart, and it lets go at a layer bond long
+before the plastic yields. So every part here is a **flat plate, printed lying
+down**, with the tension running along the layer lines. The parts are modelled
+in that attitude — lay them on the bed exactly as they come out of the
+generator, and the tests assert that each part's thinnest dimension is its
+thickness.
+
+That one decision settles the rest of the shape. A flat plate can only widen in
+its own plane, so every joint here works in the plane of the plate.
+
+![the three parts](docs/img/hanger-parts.png)
+
+### The joint is a toggle
+
+Both ends are the same: a plain slot through the plate, and a **return** on the
+end of the arm that is longer than the slot. The arm threads through — up from
+under the base, down through the top ring — and its return lies across the slot
+and cannot come back.
+
+It goes together because a plate tilted over presents a shorter shadow: tip the
+arm about 50° and the return passes; stand it up and it does not. Hanging, every
+arm is within a few degrees of vertical. No fasteners, no open-ended notches for
+a hook to walk out of, and — because the slots are closed all round — the top
+ring keeps a **solid middle** to hang from.
+
+The arm stands vertical again for the last few millimetres before the top ring,
+because an inclined plate through a horizontal slot needs a longer slot and
+lands its load at an angle.
+
+### What actually fails
+
+**Not the arm.** At the loads a pot reaches, the tensile section is enormously
+oversized — about 0.5 MPa at the default 5 kg. The sizing lands on the **plates
+in bending** instead: the base's spokes and the top ring. The generator reports
+the stress in each and says which one governs, and there is a test asserting the
+arm is *not* the governing section, because knowing that is the difference
+between a number and an understanding.
+
+**What does fail is creep.** PLA under a load that never comes off slowly
+stretches, and a hanging planter is about as permanent a load as a household
+part sees. No geometry fixes that: print it in PETG or PLA+, look at it now and
+then, and don't hang it over anything that would mind it coming down. The
+generator says so every time.
+
+`hanger_load` is the weight of the pot, its soil and its water at their
+heaviest. **One arm is assumed slack** — a hanger that has swung is carrying on
+the others, and that is the case worth sizing for.
+
+### Sizing
+
+Same nominal nursery table as the sleeve and the under-pot parts, with the same
+warning that it is nominal. `hanger_drop` is base ring to top ring; the arm is a
+little longer than that and has to lie flat on the bed, so the generator checks
+it against your printer and tells you if it only fits diagonally.
+
+A hanging pot drips — `--underpot tray` is the companion part.
+
 ## Nursery sleeve
 
 ![three sleeves](docs/img/sleeve.png)
@@ -1097,6 +1172,11 @@ raked-soil lid, written as `<name>_soil_cap.*`).
 `replica_pot_top` (152.4), `replica_pot_base` (119.38), `replica_pot_height`
 (139.95), `replica_standoff` (25.0), `replica_plumbing` (True).
 
+**Hanging cradle** — `hanger` (`"none"` | `"set"` | `"base"` | `"arm"` |
+`"top"`), `hanger_pot_size` / `_top` / `_base` / `_height` (as the sleeve),
+`hanger_arms` (3), `hanger_drop` (240.0), `hanger_load` (5.0 kg),
+`hanger_top` (`"hole"` | `"slot"` | `"ring"`), `hanger_clearance` (8.0).
+
 **Nursery sleeve** — `sleeve` (False), `sleeve_pot_size` (`"custom"` or
 `"3in"`…`"12in"`), `sleeve_pot_top` (152.4), `sleeve_pot_base` (114.3),
 `sleeve_pot_height` (144.8), `sleeve_fit` (1.5), `sleeve_reveal` (0.0),
@@ -1235,6 +1315,7 @@ flowerpot/
   mosspole.py   the stacking moss pole (segment, base, funnel cap)
   underpot.py   tray, risers and drainage mesh for a pot you did not print
   sleeve.py     a cover for the nursery pot the plant came in
+  hanger.py     three flat parts that hang a pot, sized for the load
   colors.py     the palette and hex parsing
   printers.py   machine profiles + the slicer project payload
   threemf.py    minimal colored-3MF writer (thumbnail + project settings)

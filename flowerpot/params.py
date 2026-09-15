@@ -343,6 +343,30 @@ class PotParams:
     #                                  cup.  Off = the bare shapes.
 
     # ------------------------------------------------------------------
+    # 5m. Hanging pot cradle (three flat parts, printed lying down)
+    # ------------------------------------------------------------------
+    hanger: str = "none"             # "set" writes all three; "base", "arm"
+    #                                  or "top" writes one.  EVERY part
+    #                                  prints FLAT, as modelled: a part that
+    #                                  carries a hanging pot standing up is
+    #                                  being pulled apart across its layers.
+    hanger_pot_size: str = "custom"  # or a nominal nursery size, "3in" ...
+    #                                  "12in", which fills in all three below
+    hanger_pot_top: float = 152.4    # the pot, across the top
+    hanger_pot_base: float = 114.3   # ... across the base
+    hanger_pot_height: float = 144.8  # ... and standing
+    hanger_arms: int = 3             # 3-5.  Three hangs level on its own.
+    hanger_drop: float = 240.0       # base ring to top ring.  The arm is
+    #                                  a little longer than this, and it has
+    #                                  to lie flat on the bed.
+    hanger_load: float = 5.0         # kg the set is sized for: pot, soil and
+    #                                  water at their heaviest.  One arm is
+    #                                  assumed slack.
+    hanger_top: str = "hole"         # "hole" for a hook, "slot" for webbing,
+    #                                  "ring" to pass a rope through
+    hanger_clearance: float = 8.0    # how far the arms run off the pot
+
+    # ------------------------------------------------------------------
     # 5l. Nursery pot sleeve (a cover for the pot the plant came in)
     # ------------------------------------------------------------------
     sleeve: bool = False             # the nursery pot drops in, pot and all.
@@ -753,6 +777,18 @@ class PotParams:
                     "replica is its own object - it does not combine with "
                     "the pots, the yard art or the other product flags"
                 )
+        if self.hanger != "none":
+            from .hanger import check_hanger
+            warn += check_hanger(self)
+            if (self.sleeve or self.underpot != "none"
+                    or self.moss_pole != "none" or self.cradle != "none"
+                    or self.replica != "none" or self.yard_plant != "none"
+                    or self.bouquet or self.stem or self.self_watering
+                    or self.hydro_tower or self.reservoir_insert
+                    or self.modular_kit != "none"):
+                raise ParameterError(
+                    "hanger is its own set - it does not combine with the "
+                    "pots or the other product flags")
         if self.sleeve:
             from .sleeve import check_sleeve
             warn += check_sleeve(self)

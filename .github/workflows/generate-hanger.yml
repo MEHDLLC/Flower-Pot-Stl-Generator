@@ -1,0 +1,81 @@
+# Actions -> "Generate · hanging cradle" -> Run workflow.
+# Three flat parts that hang a pot.  EVERY part prints lying down: a part
+# that carries a hanging pot standing up is pulled apart across its layers.
+name: "Generate · hanging cradle"
+
+on:
+  workflow_dispatch:
+    inputs:
+      hanger:
+        description: "What to write"
+        type: choice
+        default: set
+        options: [set, base, arm, top]
+      hanger_pot_size:
+        description: "Nominal nursery size (or custom, and measure below)"
+        type: choice
+        default: 6in
+        options: [custom, 3in, 4in, 5in, 6in, 7in, 8in, 10in, 12in]
+      hanger_pot_top:
+        description: "Pot across the TOP in mm (used when custom)"
+        type: string
+        default: "152.4"
+      hanger_pot_base:
+        description: "... across the BASE in mm"
+        type: string
+        default: "114.3"
+      hanger_pot_height:
+        description: "... and standing, in mm"
+        type: string
+        default: "144.8"
+      hanger_load:
+        description: "kg it is sized for: pot, soil and water at their heaviest"
+        type: string
+        default: "5"
+      hanger_arms:
+        description: "How many arms (3 hangs level on its own)"
+        type: choice
+        default: "3"
+        options: ["3", "4", "5"]
+      hanger_drop:
+        description: "Base ring to top ring in mm (the arm is a bit longer)"
+        type: string
+        default: "240"
+      hanger_top:
+        description: "How it hangs"
+        type: choice
+        default: hole
+        options: [hole, slot, ring]
+      hanger_clearance:
+        description: "How far the arms run off the pot, in mm"
+        type: string
+        default: "8"
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: sage
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  hanger:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Hanging cradle: ${{ inputs.hanger }} for a ${{ inputs.hanger_pot_size }} pot"
+      artifact: "hanger-${{ inputs.hanger }}"
+      cli_args: >-
+        --name hang
+        --hanger ${{ inputs.hanger }}
+        --hanger-pot-size ${{ inputs.hanger_pot_size }}
+        --hanger-pot-top ${{ inputs.hanger_pot_top }}
+        --hanger-pot-base ${{ inputs.hanger_pot_base }}
+        --hanger-pot-height ${{ inputs.hanger_pot_height }}
+        --hanger-load ${{ inputs.hanger_load }}
+        --hanger-arms ${{ inputs.hanger_arms }}
+        --hanger-drop ${{ inputs.hanger_drop }}
+        --hanger-top ${{ inputs.hanger_top }}
+        --hanger-clearance ${{ inputs.hanger_clearance }}
+        --color ${{ inputs.color }}
+        ${{ inputs.extra_args }}

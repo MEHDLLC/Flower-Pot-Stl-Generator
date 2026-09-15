@@ -58,8 +58,46 @@ from .sections import Section
 NURSERY = {"3in": 76.2, "4in": 101.6, "5in": 127.0, "6in": 152.4,
            "7in": 177.8, "8in": 203.2, "10in": 254.0, "12in": 304.8}
 _BASE_RATIO = 0.75
+#: ... and a nursery pot is about as tall as it is wide across the top.
+#: Both are typicals, not measurements.
+_HEIGHT_RATIO = 0.95
 
 PARTS = ("none", "set", "tray", "riser", "mesh")
+
+
+def nursery_dims(size: str, top: float, base: float, height: float,
+                 prefix: str) -> dict:
+    """The three measurements of a nursery pot, and the taper they imply.
+
+    ``size`` is either "custom" - in which case the three numbers are used
+    as given - or a nominal entry in :data:`NURSERY`, which fills all three
+    in from typicals.  Shared by everything that has to fit round a pot it
+    did not make; ``prefix`` only names the fields in the error messages.
+    """
+    if size == "custom":
+        top, base, height = float(top), float(base), float(height)
+    elif size in NURSERY:
+        top = NURSERY[size]
+        base, height = _BASE_RATIO * top, _HEIGHT_RATIO * top
+    else:
+        raise ParameterError(
+            f"unknown {prefix}_pot_size {size!r}; choose from "
+            f"{['custom'] + sorted(NURSERY)}")
+    if not 40.0 <= top <= 500.0:
+        raise ParameterError(
+            f"{prefix}_pot_top should be 40-500 mm, measured across the top "
+            f"of the nursery pot")
+    if not 0.35 * top <= base < top:
+        raise ParameterError(
+            f"a {base:.0f} mm base under a {top:.0f} mm top is not a nursery "
+            f"pot - {prefix}_pot_base wants to be between {0.35 * top:.0f} "
+            f"and {top:.0f} mm")
+    if not 0.3 * top <= height <= 3.0 * top:
+        raise ParameterError(
+            f"{prefix}_pot_height {height:.0f} mm is out of proportion with a "
+            f"{top:.0f} mm pot - measure it again")
+    return dict(top_r=0.5 * top, base_r=0.5 * base, height=height,
+                slope=(0.5 * top - 0.5 * base) / height)
 
 _RESERVE = 0.10
 _RIB_W = 2.6             # waffle rib width
