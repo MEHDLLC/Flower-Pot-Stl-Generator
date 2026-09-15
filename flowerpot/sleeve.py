@@ -54,11 +54,8 @@ from .params import ParameterError, PotParams
 from .profile import build_profiles, resample
 from .sections import make_section
 from .textures import make_texture
-from .underpot import NURSERY, _BASE_RATIO
-
-#: A nursery pot is about as tall as it is wide across the top.  Like
-#: ``_BASE_RATIO`` this is a typical, not a measurement.
-_HEIGHT_RATIO = 0.95
+from .underpot import (NURSERY, _BASE_RATIO, _HEIGHT_RATIO,
+                       nursery_dims)
 
 _FLOOR = 4.0             # least floor under the well
 _SEAT_W = 5.0            # ledge the nursery pot's base lands on
@@ -72,32 +69,8 @@ _OVERSHOOT = 3.0         # how far the cavity carries past the sleeve's rim
 # ---------------------------------------------------------------------------
 def nursery(p: PotParams) -> dict:
     """The nursery pot, as three numbers and the taper they imply."""
-    if p.sleeve_pot_size == "custom":
-        top, base = float(p.sleeve_pot_top), float(p.sleeve_pot_base)
-        height = float(p.sleeve_pot_height)
-    elif p.sleeve_pot_size in NURSERY:
-        nominal = NURSERY[p.sleeve_pot_size]
-        top, base = nominal, _BASE_RATIO * nominal
-        height = _HEIGHT_RATIO * nominal
-    else:
-        raise ParameterError(
-            f"unknown sleeve_pot_size {p.sleeve_pot_size!r}; choose from "
-            f"{['custom'] + sorted(NURSERY)}")
-    if not 40.0 <= top <= 500.0:
-        raise ParameterError(
-            "sleeve_pot_top should be 40-500 mm, measured across the top of "
-            "the nursery pot")
-    if not 0.35 * top <= base < top:
-        raise ParameterError(
-            f"a {base:.0f} mm base under a {top:.0f} mm top is not a nursery "
-            f"pot - sleeve_pot_base wants to be between {0.35 * top:.0f} and "
-            f"{top:.0f} mm")
-    if not 0.3 * top <= height <= 3.0 * top:
-        raise ParameterError(
-            f"sleeve_pot_height {height:.0f} mm is out of proportion with a "
-            f"{top:.0f} mm pot - measure it again")
-    return dict(top_r=0.5 * top, base_r=0.5 * base, height=height,
-                slope=(0.5 * top - 0.5 * base) / height)
+    return nursery_dims(p.sleeve_pot_size, p.sleeve_pot_top,
+                        p.sleeve_pot_base, p.sleeve_pot_height, "sleeve")
 
 
 def plan(p: PotParams) -> dict:

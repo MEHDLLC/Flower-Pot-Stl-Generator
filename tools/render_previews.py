@@ -541,6 +541,25 @@ def sleeve_figure(out: Path) -> None:
               out / "sleeve-cut.png", elev=6.0, azim=-90.0)
 
 
+def hanger_figure(out: Path) -> None:
+    import trimesh
+    from flowerpot.build import lathe
+    from flowerpot.hanger import (_round, assembled, build_hanger_arm,
+                                  build_hanger_base, build_hanger_top, plan)
+    p = PotParams(hanger="set", **FAST)
+    k = plan(p)
+    pot = lathe([(k["pot"]["base_r"], 0.0),
+                 (k["pot"]["top_r"], k["pot"]["height"])], _round(p), False)
+    pot.apply_translation((0.0, 0.0, k["t_base"]))
+    mesh_grid([("hanging, with the pot in it",
+                trimesh.util.concatenate([assembled(p), pot]), "sage")],
+              out / "hanger.png", elev=8.0, azim=-62.0)
+    mesh_grid([("base: the pot stands on it", build_hanger_base(p), "clay"),
+               ("arm: print three, flat", build_hanger_arm(p), "clay"),
+               ("top ring", build_hanger_top(p), "clay")],
+              out / "hanger-parts.png", elev=42.0, azim=-60.0)
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -573,6 +592,7 @@ def main(outdir: str = "docs/img") -> None:
     mosspole_figure(out)
     underpot_figure(out)
     sleeve_figure(out)
+    hanger_figure(out)
 
 
 if __name__ == "__main__":
