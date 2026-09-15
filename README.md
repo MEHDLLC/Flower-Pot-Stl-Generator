@@ -399,15 +399,16 @@ than quietly handing you something different from the photograph.
 
 ![hanging](docs/img/hanger.png)
 
-Three flat parts that hang a pot. Everything else in this generator is held
-up by the bench; this is not, and a hanging pot is a **sustained tensile load**
-on printed plastic — the one thing FDM is worst at. The whole design is
-arranged round that.
+Flat parts that hang a pot — from a ceiling hook, or off a wall on a French
+cleat. Everything else in this generator is held up by the bench; this is not,
+and a hanging pot is a **sustained tensile load** on printed plastic, the one
+thing FDM is worst at. The whole design is arranged round that.
 
 ```bash
 python -m flowerpot --hanger set --hanger-pot-size 6in --hanger-load 5
 python -m flowerpot --hanger set --hanger-arms 4 --hanger-top slot
 python -m flowerpot --hanger arm --hanger-drop 320 --hanger-pot-size 8in
+python -m flowerpot --hanger set --hanger-mount wall --hanger-reach 150
 ```
 
 ### Print orientation is the design
@@ -469,6 +470,71 @@ little longer than that and has to lie flat on the bed, so the generator checks
 it against your printer and tells you if it only fits diagonally.
 
 A hanging pot drips — `--underpot tray` is the companion part.
+
+### Off a wall instead: `--hanger-mount wall`
+
+![the wall mount](docs/img/hanger-wall.png)
+
+The same set, on a wall rather than a hook. It adds three more flat parts: a
+**cleat** (the rail that screws to the wall), a **rib** (print two) and a
+**yoke** (the beam between them, with the eye the pot hangs from).
+
+A French cleat is a board ripped at 45°, and 45° is exactly this generator's
+overhang limit — so the joint that makes a cleat work is also the one angle
+that prints with nothing under it.
+
+**But a bracket is not a hook.** A hook carries tension. A bracket carries a
+**cantilever**: 5 kg at 150 mm of reach is 7.4 N·m at the fixing, an order of
+magnitude more than anything else here. Two things follow, and they are the
+whole design:
+
+**A bare French cleat only resists shear.** It has nothing to say about a
+moment, which tries to peel the top of the cleat straight off the wall. So each
+rib's **back edge bears flat on the wall below its notch**, and the moment
+becomes a couple: the back pushes in low down, the notch holds out up top.
+
+**Which way you rip the cleat decides whether it holds at all.** The rail's
+bevel here rises *away* from the wall. Tip the rib the way a cantilever tips it
+— top out, bottom in — and the notch's ceiling drives down and out **into** the
+rail. Rip it the other way round, the way a picture rail usually is, and the
+same motion slides the two bevels apart. There is a test for exactly this,
+because getting it backwards produces a bracket that looks right and falls off.
+The same orientation means the bracket cannot be pulled straight off the wall
+either: you have to lift it the rail's full depth first.
+
+![the wall parts](docs/img/hanger-wall-parts.png)
+
+A shelf bracket is a plate on edge, not a ribbon, for the same reason the arms
+are — so the reach is carried by two ribs standing on edge. Everything about a
+rib is *outline*: the hook, the taper and the yoke's slot are all edges in the
+plane it prints in, so a rib has no overhang anywhere by construction.
+
+**The rib tapers, because the moment does — but not to a point.** With the load
+hung at the tip, the section of a triangle falls away faster than the moment
+does, and the worst stress ends up out near the tip rather than at the wall. So
+the rib keeps a tip deep enough for what is left, and the generator reports how
+far out along the rib the worst section actually is.
+
+**The yoke's catch is the only kind a flat part can have.** A part that prints
+flat can only grow in its own plane, so a return can never be wider than its
+slot in the direction it slides through it. The lug on the end of each tenon is
+wider the *other* way instead: hold the yoke 6 mm high and slide a rib onto each
+end, then let it down, and each lug drops below its slot with the rib in front
+of it. Then hook both ribs over the rail.
+
+**The screws are the part this generator does not make.** How many there are is
+worked out from the pull-out the cantilever produces — the rail in bending
+between its screws is usually what governs the whole mount — and they are
+countersunk 80°, not 90°, because 90° would be exactly the overhang limit with
+nothing left over. What they go into is yours: a stud, or a plasterboard fixing
+rated well past the numbers the generator prints.
+
+```bash
+python -m flowerpot --hanger set --hanger-mount wall --hanger-reach 150
+python -m flowerpot --hanger set --hanger-mount wall --hanger-load 10 \
+    --hanger-cleat-length 200
+python -m flowerpot --hanger rib --hanger-mount wall   # just print one more
+```
 
 ## Nursery sleeve
 
@@ -1173,9 +1239,13 @@ raked-soil lid, written as `<name>_soil_cap.*`).
 (139.95), `replica_standoff` (25.0), `replica_plumbing` (True).
 
 **Hanging cradle** — `hanger` (`"none"` | `"set"` | `"base"` | `"arm"` |
-`"top"`), `hanger_pot_size` / `_top` / `_base` / `_height` (as the sleeve),
+`"top"`, plus `"cleat"` | `"rib"` | `"yoke"` on a wall mount),
+`hanger_pot_size` / `_top` / `_base` / `_height` (as the sleeve),
 `hanger_arms` (3), `hanger_drop` (240.0), `hanger_load` (5.0 kg),
-`hanger_top` (`"hole"` | `"slot"` | `"ring"`), `hanger_clearance` (8.0).
+`hanger_top` (`"hole"` | `"slot"` | `"ring"`), `hanger_clearance` (8.0),
+`hanger_mount` (`"ceiling"` | `"wall"`), `hanger_reach` (150.0),
+`hanger_cleat_length` (120.0), `hanger_screws` (0 = as many as the pull-out
+needs), `hanger_screw_bore` (4.5).
 
 **Nursery sleeve** — `sleeve` (False), `sleeve_pot_size` (`"custom"` or
 `"3in"`…`"12in"`), `sleeve_pot_top` (152.4), `sleeve_pot_base` (114.3),
@@ -1315,7 +1385,7 @@ flowerpot/
   mosspole.py   the stacking moss pole (segment, base, funnel cap)
   underpot.py   tray, risers and drainage mesh for a pot you did not print
   sleeve.py     a cover for the nursery pot the plant came in
-  hanger.py     three flat parts that hang a pot, sized for the load
+  hanger.py     flat parts that hang a pot from a hook or a wall cleat
   colors.py     the palette and hex parsing
   printers.py   machine profiles + the slicer project payload
   threemf.py    minimal colored-3MF writer (thumbnail + project settings)

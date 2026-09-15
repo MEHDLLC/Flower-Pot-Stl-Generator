@@ -560,6 +560,28 @@ def hanger_figure(out: Path) -> None:
               out / "hanger-parts.png", elev=42.0, azim=-60.0)
 
 
+def hanger_wall_figure(out: Path) -> None:
+    import trimesh
+    from flowerpot.build import lathe
+    from flowerpot.hanger import (_round, assembled, build_hanger_cleat,
+                                  build_hanger_rib, build_hanger_yoke,
+                                  plan, wall_plan)
+    p = PotParams(hanger="set", hanger_mount="wall", **FAST)
+    k, w = plan(p), wall_plan(p)
+    pot = lathe([(k["pot"]["base_r"], 0.0),
+                 (k["pot"]["top_r"], k["pot"]["height"])], _round(p), False)
+    pot.apply_translation((w["reach"], 0.0,
+                           w["z_top"] - (k["drop"] + k["t_top"] + 4.0)
+                           + k["t_base"]))
+    mesh_grid([("on the wall, with the pot on it",
+                trimesh.util.concatenate([assembled(p), pot]), "sage")],
+              out / "hanger-wall.png", elev=10.0, azim=-40.0)
+    mesh_grid([("cleat: screws to the wall", build_hanger_cleat(p), "clay"),
+               ("rib: print two, flat", build_hanger_rib(p), "clay"),
+               ("yoke: the pot hangs here", build_hanger_yoke(p), "clay")],
+              out / "hanger-wall-parts.png", elev=42.0, azim=-60.0)
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -593,6 +615,7 @@ def main(outdir: str = "docs/img") -> None:
     underpot_figure(out)
     sleeve_figure(out)
     hanger_figure(out)
+    hanger_wall_figure(out)
 
 
 if __name__ == "__main__":

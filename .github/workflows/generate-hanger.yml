@@ -1,6 +1,7 @@
 # Actions -> "Generate · hanging cradle" -> Run workflow.
-# Three flat parts that hang a pot.  EVERY part prints lying down: a part
-# that carries a hanging pot standing up is pulled apart across its layers.
+# Flat parts that hang a pot, from a ceiling hook or off a wall.  EVERY part
+# prints lying down: a part that carries a hanging pot standing up is pulled
+# apart across its layers.
 name: "Generate · hanging cradle"
 
 on:
@@ -10,7 +11,7 @@ on:
         description: "What to write"
         type: choice
         default: set
-        options: [set, base, arm, top]
+        options: [set, base, arm, top, cleat, rib, yoke]
       hanger_pot_size:
         description: "Nominal nursery size (or custom, and measure below)"
         type: choice
@@ -50,6 +51,27 @@ on:
         description: "How far the arms run off the pot, in mm"
         type: string
         default: "8"
+      hanger_mount:
+        description: "Ceiling hook, or a French cleat on a wall"
+        type: choice
+        default: ceiling
+        options: [ceiling, wall]
+      hanger_reach:
+        description: "WALL ONLY: wall to the hanging point, in mm"
+        type: string
+        default: "150"
+      hanger_cleat_length:
+        description: "WALL ONLY: the rail along the wall, in mm"
+        type: string
+        default: "120"
+      hanger_screws:
+        description: "WALL ONLY: 0 = as many as the pull-out needs"
+        type: string
+        default: "0"
+      hanger_screw_bore:
+        description: "WALL ONLY: screw shank in mm (head is countersunk)"
+        type: string
+        default: "4.5"
       color:
         description: "Color (palette name or #RRGGBB hex)"
         type: string
@@ -63,8 +85,8 @@ jobs:
   hanger:
     uses: ./.github/workflows/generate-common.yml
     with:
-      title: "Hanging cradle: ${{ inputs.hanger }} for a ${{ inputs.hanger_pot_size }} pot"
-      artifact: "hanger-${{ inputs.hanger }}"
+      title: "Hanging cradle: ${{ inputs.hanger }} for a ${{ inputs.hanger_pot_size }} pot, ${{ inputs.hanger_mount }} mount"
+      artifact: "hanger-${{ inputs.hanger_mount }}-${{ inputs.hanger }}"
       cli_args: >-
         --name hang
         --hanger ${{ inputs.hanger }}
@@ -77,5 +99,10 @@ jobs:
         --hanger-drop ${{ inputs.hanger_drop }}
         --hanger-top ${{ inputs.hanger_top }}
         --hanger-clearance ${{ inputs.hanger_clearance }}
+        --hanger-mount ${{ inputs.hanger_mount }}
+        --hanger-reach ${{ inputs.hanger_reach }}
+        --hanger-cleat-length ${{ inputs.hanger_cleat_length }}
+        --hanger-screws ${{ inputs.hanger_screws }}
+        --hanger-screw-bore ${{ inputs.hanger_screw_bore }}
         --color ${{ inputs.color }}
         ${{ inputs.extra_args }}
