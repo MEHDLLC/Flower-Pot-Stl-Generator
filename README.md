@@ -551,9 +551,10 @@ The rail screws to the wall and disappears into it. Hung, there is no bracket:
 the pot grows out of the wall.
 
 ```bash
-python -m flowerpot --wall-pot set --bottom-diameter 130 --drainage-pattern none
+python -m flowerpot --wall-pot set --bottom-diameter 130
 python -m flowerpot --wall-pot set --pot-style hexagonal --wall-pot-round 0.8
-python -m flowerpot --wall-pot cleat            # just another rail
+python -m flowerpot --wall-pot set --wall-pot-well 40 --drainage-pattern grid
+python -m flowerpot --wall-pot liner             # just another liner
 ```
 
 **A wall pot is a pot** — same leverage as the sleeve. `pot_style`,
@@ -602,6 +603,47 @@ The pocket is the rail's thickness deep, so the back needs that plus a skin.
 Making the *whole* back that thick is most of a kilo of plastic for nothing, so
 it is a pad on the inside of the back wall — ramped underneath so it prints —
 and nowhere else.
+
+### The liner, and the open space under it
+
+![the liner and the well](docs/img/wallpot-liner.png)
+
+**The outer never gets a hole.** That is what a thing hanging on a wall has to
+be, and holes are what a pot needs — so the holes go in a **thin liner** that
+drops inside it instead. `drainage_pattern`, `num_drainage_holes` and
+`drainage_hole_radius` all point at the liner; `num_side_holes` is refused
+outright, because half of them would come out on the flat back.
+
+The liner lands on a **ledge** and what is under it is a **well**. The outer's
+cavity is a step — narrow well, ledge, then the pot's own taper — so going up it
+only ever gets *wider*, which is why none of it needs a cone to print.
+
+![the liner](docs/img/wallpot-liner-part.png)
+
+Three things go through the liner's floor:
+
+- **Drainage**, so water you pour on the soil ends up in the well and not on the
+  wall.
+- **A wick collar** in the middle. Thread a cord down it and let it hang in the
+  well: that is the difference between self-watering and a pot with a drip tray
+  under it. Polyester or nylon — cotton rots.
+- **A standpipe** up the inside, at the front. It fills the well without wetting
+  the soil, and the water standing in it *is* the level in the reservoir.
+
+The standpipe is at the front for a reason: it is the one azimuth guaranteed to
+be clear of the flat back however flat that back is cut, and it is where you can
+see down it. A flute down the back would have been neater and is impossible —
+the pad behind the pocket is exactly the rail's depth plus a skin, so grooving
+it breaks straight into the cleat.
+
+There is **no overflow**, because an overflow is a hole in the outside. The well
+is all it takes before the liner is standing in it, and the generator says how
+many millilitres that is.
+
+The liner is also where the polygon styles earn their keep: the cavity's
+polyline carries a **corner** radius, so a square liner's outermost holes and
+its standpipe are placed off the *inscribed* radius instead. Take the corner
+radius and they come out through the middle of a flat.
 
 ### It works out what it will weigh
 
@@ -1322,7 +1364,10 @@ raked-soil lid, written as `<name>_soil_cap.*`).
 **Wall pot** — `wall_pot` (`"none"` | `"set"` | `"pot"` | `"cleat"`),
 `wall_pot_round` (0.0 = as flat as the pot allows), `wall_pot_rail` (0.0 =
 as long as the flat back has room for), `wall_pot_screws` (0 = as many as the
-pull-out needs), `wall_pot_screw_bore` (4.5). Every pot parameter applies too.
+pull-out needs), `wall_pot_screw_bore` (4.5), `wall_pot_liner` (True),
+`wall_pot_well` (25.0), `wall_pot_liner_wall` (1.6), `wall_pot_fill` (True),
+`wall_pot_wick` (True). Every pot parameter applies too, and with a liner the
+drainage ones apply to *it*.
 
 **Hanging cradle** — `hanger` (`"none"` | `"set"` | `"base"` | `"arm"` |
 `"top"`, plus `"cleat"` | `"rib"` | `"yoke"` on a wall mount),
@@ -1472,7 +1517,8 @@ flowerpot/
   underpot.py   tray, risers and drainage mesh for a pot you did not print
   sleeve.py     a cover for the nursery pot the plant came in
   hanger.py     flat parts that hang a pot from a hook or a wall cleat
-  wallpot.py    a pot with the French cleat built into its flat back
+  wallpot.py    a pot with the French cleat built into its flat back,
+                and the thin liner and reservoir that go inside it
   colors.py     the palette and hex parsing
   printers.py   machine profiles + the slicer project payload
   threemf.py    minimal colored-3MF writer (thumbnail + project settings)

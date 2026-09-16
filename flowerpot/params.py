@@ -400,6 +400,24 @@ class PotParams:
     #                                  as the flat back has room for
     wall_pot_screws: int = 0         # 0 = as many as the pull-out needs
     wall_pot_screw_bore: float = 4.5  # the screw's shank
+    wall_pot_liner: bool = True      # a thin pot that drops inside it. The
+    #                                  OUTER then gets no holes at all -
+    #                                  drainage_pattern, num_drainage_holes
+    #                                  and drainage_hole_radius point at the
+    #                                  LINER instead, and what runs out of
+    #                                  them lands in the well, not the wall
+    wall_pot_well: float = 25.0      # open space left under the liner: the
+    #                                  reservoir. 0 stands the liner on the
+    #                                  floor of the pot
+    wall_pot_liner_wall: float = 1.6  # how thin the liner is
+    wall_pot_fill: bool = True       # a standpipe up the inside of the
+    #                                  liner: fills the well without wetting
+    #                                  the soil, and the water standing in
+    #                                  it is the level in the reservoir
+    wall_pot_wick: bool = True       # a bore and a collar in the liner's
+    #                                  floor for a wicking cord, so the well
+    #                                  waters the plant instead of just
+    #                                  catching what it drops
 
     # ------------------------------------------------------------------
     # 5l. Nursery pot sleeve (a cover for the pot the plant came in)

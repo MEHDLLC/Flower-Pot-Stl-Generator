@@ -1,7 +1,9 @@
 # Actions -> "Generate · wall pot" -> Run workflow.
 # A pot with the wall mount built into its back: flat across the back, with
 # the female half of a French cleat as a pocket inside that flat.  Hung,
-# there is nothing of the mount to see.
+# there is nothing of the mount to see.  A thin liner drops inside it, so
+# the OUTER never needs a hole - the drainage is the liner's, and what runs
+# through it lands in the well rather than on your wall.
 name: "Generate · wall pot"
 
 on:
@@ -11,7 +13,7 @@ on:
         description: "What to write"
         type: choice
         default: set
-        options: [set, pot, cleat]
+        options: [set, pot, liner, cleat]
       pot_style:
         description: "Outer style"
         type: choice
@@ -50,11 +52,27 @@ on:
         description: "Screw shank in mm (the head is countersunk)"
         type: string
         default: "4.5"
+      wall_pot_liner:
+        description: "A thin liner inside it (the outer then gets no holes)"
+        type: boolean
+        default: true
+      wall_pot_well:
+        description: "Open space under the liner, in mm - the reservoir"
+        type: string
+        default: "25"
+      wall_pot_wick:
+        description: "A collar in the liner's floor for a wicking cord"
+        type: boolean
+        default: true
+      wall_pot_fill:
+        description: "A standpipe to fill the well and read its level"
+        type: boolean
+        default: true
       drainage_pattern:
-        description: "Drainage (a wall pot with holes waters the wall)"
+        description: "Drainage IN THE LINER (never in the outer)"
         type: choice
-        default: none
-        options: [none, center, ring, grid]
+        default: ring
+        options: [ring, none, center, grid]
       color:
         description: "Color (palette name or #RRGGBB hex)"
         type: string
@@ -82,6 +100,10 @@ jobs:
         --wall-pot-rail ${{ inputs.wall_pot_rail }}
         --wall-pot-screws ${{ inputs.wall_pot_screws }}
         --wall-pot-screw-bore ${{ inputs.wall_pot_screw_bore }}
+        --wall-pot-liner ${{ inputs.wall_pot_liner }}
+        --wall-pot-well ${{ inputs.wall_pot_well }}
+        --wall-pot-wick ${{ inputs.wall_pot_wick }}
+        --wall-pot-fill ${{ inputs.wall_pot_fill }}
         --drainage-pattern ${{ inputs.drainage_pattern }}
         --color ${{ inputs.color }}
         ${{ inputs.extra_args }}
