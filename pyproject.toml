@@ -1,0 +1,43 @@
+# Packaging metadata so the generator can be installed as a library, e.g.
+#
+#     pip install git+https://github.com/MEHDLLC/Flower-Pot-Stl-Generator
+#
+# and then used from another project:
+#
+#     from flowerpot import PotParams, build_pot
+#
+# Running it the existing way is unaffected: `pip install -r requirements.txt`
+# followed by `python -m flowerpot` still works exactly as before.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flower-pot-stl-generator"
+version = "1.0.0"
+description = "Parametric, print-ready flower pot, vase and planter generator"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.24",
+    "trimesh>=4.0",
+    "manifold3d>=2.3",  # exact boolean kernel - required for watertight results
+    "scipy>=1.10",      # trimesh uses it for connectivity / graph queries
+    "networkx>=3.0",    # trimesh uses it for cross-sections
+]
+
+[project.optional-dependencies]
+# Only the tests need these; printing a model should not need a test stack.
+test = [
+    "pytest>=7.0",
+    "lxml>=4.9",  # trimesh needs it to LOAD .3mf in the round-trip test
+]
+
+[project.scripts]
+flowerpot = "flowerpot.cli:main"
+
+[tool.setuptools]
+# Listed explicitly: this is a flat layout, and auto-discovery would trip over
+# the sibling tools/, tests/ and docs/ directories.
+packages = ["flowerpot"]
