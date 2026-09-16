@@ -1,0 +1,78 @@
+# Actions -> "Generate · hanging pot" -> Run workflow.
+# A pot with loops on its own rim.  No cradle, no bracket, nothing to
+# assemble: three ears with a VERTICAL hole through each, and cord.  The
+# cord carries the load, which is the one thing no printed hanger can do -
+# plastic creeps under a weight that never comes off, and cord does not.
+name: "Generate · hanging pot"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pot_style:
+        description: "Outer style"
+        type: choice
+        default: classic_tapered
+        options: [classic_tapered, low_poly_faceted, ribbed_spiral, hexagonal, square]
+      surface_texture:
+        description: "Relief pressed into the wall"
+        type: choice
+        default: none
+        options: [none, herringbone, honeycomb, diamonds, waves]
+      hang_loops:
+        description: "How many loops (3 hangs level on its own)"
+        type: choice
+        default: "3"
+        options: ["2", "3", "4", "5", "6"]
+      hang_loop_bore:
+        description: "The cord hole, in mm"
+        type: string
+        default: "5"
+      hang_ceiling_plate:
+        description: "Also write a flat bar for the ceiling (a steel hook is better)"
+        type: boolean
+        default: false
+      height:
+        description: "Pot height in mm"
+        type: string
+        default: "145"
+      top_diameter:
+        description: "Across the top in mm (under the rim)"
+        type: string
+        default: "150"
+      bottom_diameter:
+        description: "Across the base in mm"
+        type: string
+        default: "105"
+      drainage_pattern:
+        description: "Drainage (a hanging pot drips - water it in the sink)"
+        type: choice
+        default: ring
+        options: [ring, none, center, grid]
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: sage
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  hangingpot:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Hanging pot: ${{ inputs.hang_loops }} loops, ${{ inputs.pot_style }}"
+      artifact: "hangingpot-${{ inputs.hang_loops }}-loops"
+      cli_args: >-
+        --name hanging
+        --pot-style ${{ inputs.pot_style }}
+        --surface-texture ${{ inputs.surface_texture }}
+        --hang-loops ${{ inputs.hang_loops }}
+        --hang-loop-bore ${{ inputs.hang_loop_bore }}
+        --${{ inputs.hang_ceiling_plate == false && 'no-' || '' }}hang-ceiling-plate
+        --height ${{ inputs.height }}
+        --top-diameter ${{ inputs.top_diameter }}
+        --bottom-diameter ${{ inputs.bottom_diameter }}
+        --drainage-pattern ${{ inputs.drainage_pattern }}
+        --color ${{ inputs.color }}
+        ${{ inputs.extra_args }}

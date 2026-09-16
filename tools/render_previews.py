@@ -614,6 +614,24 @@ def wallpot_liner_figure(out: Path) -> None:
               out / "wallpot-liner-part.png", elev=46.0, azim=-58.0)
 
 
+def ceiling_figure(out: Path) -> None:
+    import trimesh
+    from flowerpot.build import _boolean, build_pot
+    from flowerpot.ceiling import build_ceiling_plate, plan
+    p = PotParams(hang_loops=3, hang_ceiling_plate=True, **FAST)
+    mesh_grid([("three loops on the rim, and cord does the rest",
+                build_pot(p), "sage")],
+              out / "hangloops.png", elev=24.0, azim=-52.0)
+    k = plan(p)
+    e = k["ears"][0]
+    box = trimesh.creation.box(extents=(60.0, 40.0, 46.0))
+    box.apply_translation((e["r_c"] - 10.0, 0.0, k["z_top"] - 18.0))
+    mesh_grid([("one ear: the bore goes right through, the gusset is 43 deg",
+                _boolean("intersection", [build_pot(p), box]), "clay"),
+               ("the ceiling bar", build_ceiling_plate(p), "clay")],
+              out / "hangloops-parts.png", elev=-14.0, azim=-64.0)
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -650,6 +668,7 @@ def main(outdir: str = "docs/img") -> None:
     hanger_wall_figure(out)
     wallpot_figure(out)
     wallpot_liner_figure(out)
+    ceiling_figure(out)
 
 
 if __name__ == "__main__":

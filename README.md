@@ -536,6 +536,71 @@ python -m flowerpot --hanger set --hanger-mount wall --hanger-load 10 \
 python -m flowerpot --hanger rib --hanger-mount wall   # just print one more
 ```
 
+## Hanging pot: loops on the rim
+
+![three loops on the rim](docs/img/hangloops.png)
+
+The same argument as the wall pot, pointed at a ceiling. The hanging cradle
+below is a **gadget** — five printed parts that grip a pot somebody else made.
+When you are printing the pot anyway, put the mount *in* the pot: three ears on
+the rim, a hole through each, and cord.
+
+```bash
+python -m flowerpot --hang-loops 3
+python -m flowerpot --hang-loops 4 --hang-loop-bore 8 --pot-style hexagonal
+python -m flowerpot --hang-loops 3 --hang-ceiling-plate
+```
+
+It beats the cradle in three ways. Nothing to assemble. The parts count drops
+from five to none, because the loops are part of a pot you were printing. And
+**the cord carries the tension** — cord does not creep, which is the one failure
+mode the cradle's own documentation admits no geometry can fix.
+
+![the ear and the bar](docs/img/hangloops-parts.png)
+
+### The one thing to be careful about
+
+A pot prints standing up, so a cord pulling up on its rim pulls **across the
+layer lines** — the direction printed plastic is genuinely bad at, and the one
+the cradle is contorted to avoid.
+
+It is fine here, and the reason is worth stating rather than assuming: the
+cradle's arms had a section set by the arm; this has a section set by *the rim*,
+which is enormous by comparison. The loops work at about **0.14 MPa against an
+interlayer working stress of 3.0** — more than twenty times over. The generator
+prints both numbers rather than waving at them, and refuses if the margin goes.
+
+`_SIGMA_Z` is 3.0 MPa where everything else in the repo uses 8.0, because a
+layer bond is not the plastic.
+
+### Why a bore and not an eye
+
+A horizontal eye for an S-hook needs a gabled roof to print, *and* it puts the
+pull on a fin standing off the rim — about a tenth of the section, in the same
+bad direction. A **vertical bore** through a locally widened rim keeps the load
+in the rim's own plane, where the layers are, and needs no roof at all.
+
+Each ear is gusseted underneath by a 43° cone that is a local flare of the pot's
+*own wall*, so it springs from material rather than from air. On a polygon that
+matters: the outline's polyline carries its **corner** radius, so an ear placed
+at that distance hangs over a flat with its gusset springing from nothing. Each
+ear is placed off the wall's radius *at its own azimuth* instead.
+
+The bore goes right through and exits under the rim, which is where the knot
+sits. There is a test for that, and it is the cheapest one in the repo: the
+pot's **genus** has to equal the number of loops plus the number of drainage
+holes. A blind hole adds nothing to the genus; a through hole adds one.
+
+### The ceiling bar
+
+`--hang-ceiling-plate` writes a flat bar with a countersunk screw at each end
+and a chamfered eye in the middle, sized from the pot's own weight. It prints
+flat, so its bending runs along the layer lines.
+
+It is also the part worth arguing about, and the generator says so every time:
+**a steel screw hook costs pennies, will not creep, and is a better idea.** What
+it screws into matters more than what it is made of.
+
 ## Wall pot
 
 ![a wall pot](docs/img/wallpot.png)
@@ -1361,6 +1426,10 @@ raked-soil lid, written as `<name>_soil_cap.*`).
 `replica_pot_top` (152.4), `replica_pot_base` (119.38), `replica_pot_height`
 (139.95), `replica_standoff` (25.0), `replica_plumbing` (True).
 
+**Hanging loops** — `hang_loops` (0 = none, else 2-6), `hang_loop_bore` (5.0),
+`hang_ceiling_plate` (False), `hang_plate_screws` (2), `hang_plate_screw_bore`
+(4.5). Every pot parameter applies too.
+
 **Wall pot** — `wall_pot` (`"none"` | `"set"` | `"pot"` | `"cleat"`),
 `wall_pot_round` (0.0 = as flat as the pot allows), `wall_pot_rail` (0.0 =
 as long as the flat back has room for), `wall_pot_screws` (0 = as many as the
@@ -1517,6 +1586,7 @@ flowerpot/
   underpot.py   tray, risers and drainage mesh for a pot you did not print
   sleeve.py     a cover for the nursery pot the plant came in
   hanger.py     flat parts that hang a pot from a hook or a wall cleat
+  ceiling.py    loops on the pot's own rim, and a bar for the ceiling
   wallpot.py    a pot with the French cleat built into its flat back,
                 and the thin liner and reservoir that go inside it
   colors.py     the palette and hex parsing

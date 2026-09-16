@@ -400,6 +400,20 @@ class PotParams:
     #                                  as the flat back has room for
     wall_pot_screws: int = 0         # 0 = as many as the pull-out needs
     wall_pot_screw_bore: float = 4.5  # the screw's shank
+
+    # ------------------------------------------------------------------
+    # 5o. Hanging loops (ears on the pot's own rim, and cord)
+    # ------------------------------------------------------------------
+    hang_loops: int = 0              # 2-6 ears on the rim, each with a
+    #                                  VERTICAL hole through it for cord.
+    #                                  0 = none. The cord carries the load,
+    #                                  which is the one thing no printed
+    #                                  hanger can do - plastic creeps.
+    hang_loop_bore: float = 5.0      # the hole, in mm
+    hang_ceiling_plate: bool = False  # also write a flat bar to screw to
+    #                                  the ceiling, with an eye in it
+    hang_plate_screws: int = 2
+    hang_plate_screw_bore: float = 4.5
     wall_pot_liner: bool = True      # a thin pot that drops inside it. The
     #                                  OUTER then gets no holes at all -
     #                                  drainage_pattern, num_drainage_holes
@@ -842,6 +856,17 @@ class PotParams:
                 raise ParameterError(
                     "hanger is its own set - it does not combine with the "
                     "pots or the other product flags")
+        if self.hang_loops or self.hang_ceiling_plate:
+            from .ceiling import check_ceiling
+            warn += check_ceiling(self)
+            if (self.wall_pot != "none" or self.hanger != "none"
+                    or self.cradle != "none" or self.moss_pole != "none"
+                    or self.underpot != "none" or self.replica != "none"
+                    or self.yard_plant != "none" or self.hydro_tower
+                    or self.modular_kit != "none"):
+                raise ParameterError(
+                    "hang_loops are a way of hanging the pot itself - they "
+                    "do not combine with the other mounts or with the kits")
         if self.wall_pot != "none":
             from .wallpot import check_wall_pot
             warn += check_wall_pot(self)
