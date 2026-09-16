@@ -100,10 +100,10 @@ jobs:
         --wall-pot-rail ${{ inputs.wall_pot_rail }}
         --wall-pot-screws ${{ inputs.wall_pot_screws }}
         --wall-pot-screw-bore ${{ inputs.wall_pot_screw_bore }}
-        --wall-pot-liner ${{ inputs.wall_pot_liner }}
+        --${{ inputs.wall_pot_liner == false && 'no-' || '' }}wall-pot-liner
         --wall-pot-well ${{ inputs.wall_pot_well }}
-        --wall-pot-wick ${{ inputs.wall_pot_wick }}
-        --wall-pot-fill ${{ inputs.wall_pot_fill }}
+        --${{ inputs.wall_pot_wick == false && 'no-' || '' }}wall-pot-wick
+        --${{ inputs.wall_pot_fill == false && 'no-' || '' }}wall-pot-fill
         --drainage-pattern ${{ inputs.drainage_pattern }}
         --color ${{ inputs.color }}
         ${{ inputs.extra_args }}
