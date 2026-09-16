@@ -595,6 +595,25 @@ def wallpot_figure(out: Path) -> None:
               out / "wallpot-parts.png", elev=16.0, azim=150.0)
 
 
+def wallpot_liner_figure(out: Path) -> None:
+    import trimesh
+    from flowerpot.build import _boolean
+    from flowerpot.wallpot import (build_wall_liner, build_wall_pot,
+                                   seated_liner)
+    p = PotParams(wall_pot="set", bottom_diameter=130.0, **FAST)
+    half = trimesh.creation.box(extents=(600.0, 600.0, 600.0))
+    half.apply_translation((0.0, -300.0, 0.0))
+    cut = trimesh.util.concatenate(
+        [_boolean("difference", [build_wall_pot(p), half]),
+         _boolean("difference", [seated_liner(p), half])])
+    mesh_grid([("cut in half: liner, ledge, and the well under it", cut,
+                "sage")],
+              out / "wallpot-liner.png", elev=14.0, azim=-86.0)
+    mesh_grid([("the liner: drainage, wick collar, standpipe",
+                build_wall_liner(p), "clay")],
+              out / "wallpot-liner-part.png", elev=46.0, azim=-58.0)
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -630,6 +649,7 @@ def main(outdir: str = "docs/img") -> None:
     hanger_figure(out)
     hanger_wall_figure(out)
     wallpot_figure(out)
+    wallpot_liner_figure(out)
 
 
 if __name__ == "__main__":

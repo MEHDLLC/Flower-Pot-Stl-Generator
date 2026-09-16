@@ -20,7 +20,9 @@ from flowerpot.build import _boolean, lathe
 from flowerpot.hanger import _CLEAT_RISE, _SIGMA
 from flowerpot.profile import build_profiles, resample
 from flowerpot.sections import make_section
+import flowerpot.wallpot as W
 from flowerpot.wallpot import (PARTS, _BACK_RATIO, _SKIN, back_pad,
+                               build_wall_liner, seated_liner,
                                build_wall_cleat, build_wall_pot, governs,
                                outer_radius, plan, roundness, seated_cleat,
                                soil_and_centre, socket_cutter, stresses)
@@ -31,7 +33,7 @@ STYLES = ["classic_tapered", "hexagonal", "square", "low_poly_faceted",
 
 
 def _p(**kw) -> PotParams:
-    base = dict(wall_pot="set", drainage_pattern="none", **FAST)
+    base = dict(wall_pot="set", **FAST)
     base.update(kw)
     return PotParams(**base)
 
@@ -76,7 +78,8 @@ def test_every_style_still_prints_standing_up(style):
     dict(surface_texture="honeycomb"), dict(add_top_rim=False),
     dict(vase_profile="cone", height=230.0),
     dict(height=220.0, top_diameter=190.0, bottom_diameter=170.0),
-    dict(wall_pot_round=0.80), dict(wall_pot_round=0.50),
+    dict(wall_pot_round=0.80),
+    dict(wall_pot_round=0.50, wall_pot_liner=False),
 ])
 def test_everything_the_pot_builder_can_do_still_works(kw):
     p = _p(**kw)
@@ -86,11 +89,23 @@ def test_everything_the_pot_builder_can_do_still_works(kw):
     assert len(pot.split(only_watertight=False)) == 1
 
 
-def test_the_holes_are_the_drainage_and_no_others():
-    assert audit(build_wall_pot(_p()), 45.0).genus == 0
-    assert audit(build_wall_pot(_p(drainage_pattern="ring",
-                                   num_drainage_holes=5)), 45.0).genus == 5
-    assert audit(build_wall_pot(_p(num_side_holes=4)), 45.0).genus == 4
+def test_the_outer_has_no_holes_in_it_whatever_you_ask_for():
+    """The one thing a thing on a wall must not have.  With the liner in,
+    every drainage parameter points at the LINER instead, and the outside
+    stays solid no matter what."""
+    for kw in (dict(), dict(drainage_pattern="ring", num_drainage_holes=5),
+               dict(drainage_pattern="grid", num_drainage_holes=9),
+               dict(drainage_pattern="center")):
+        assert audit(build_wall_pot(_p(**kw)), 45.0).genus == 0, kw
+    # side ports would go through the outer's wall, so they are refused
+    with pytest.raises(ParameterError, match="one thing a wall pot must not"):
+        _p(num_side_holes=4).validate()
+    # without a liner the pot is what the plant lives in, and then its own
+    # drainage applies again - with a warning about where it goes
+    plain = _p(wall_pot_liner=False, drainage_pattern="ring",
+               num_drainage_holes=5)
+    assert audit(build_wall_pot(plain), 45.0).genus == 5
+    assert any("waters the wall" in m for m in plain.validate())
 
 
 def test_the_outside_is_the_pot_builder_doing_its_usual_job():
@@ -132,7 +147,7 @@ def test_one_plane_gives_two_roundnesses_and_that_is_reported():
     assert any("% round at the foot" in m and "at the mouth" in m
                for m in p.validate())
     # half a pot is half a pot at both ends
-    half = _p(wall_pot_round=0.50)
+    half = _p(wall_pot_round=0.50, wall_pot_liner=False)
     assert roundness(half, 0.0) == pytest.approx(0.5, abs=1e-6)
     assert roundness(half, half.height) == pytest.approx(0.5, abs=1e-6)
     assert plan(half)["x_back"] == pytest.approx(0.0, abs=1e-9)
@@ -239,17 +254,27 @@ def test_nothing_of_the_rail_shows_once_the_pot_is_on_it():
 # the load is the one thing nobody has to type in
 # ---------------------------------------------------------------------------
 def test_the_pot_says_how_much_it_will_weigh():
-    """Every other mount here has to be told the load.  This one has the
-    cavity that the soil goes in, so it works it out - and the sum is exact
-    enough that the mesh agrees with it."""
+    """Every other mount here has to be told the load.  This one owns the
+    cavity the soil goes in, so it works it out - soil and water kept
+    apart, because they have different densities AND different arms."""
     p = _p()
+    k = plan(p)
+    assert k["soil"] > 0.0 and k["water"] > 0.0
+    assert k["load"] == pytest.approx(
+        (k["soil"] * 1.2 + k["water"] * 1.0) / 1000.0 + 1.0, rel=1e-6)
+    assert k["reach"] > 0.0
+    assert any("ml of soil" in m and "ml of water" in m and "N.m" in m
+               for m in p.validate())
+
+
+def test_the_sum_for_a_plain_wall_pot_still_matches_its_mesh():
+    """Without a liner the whole cavity is the soil, and that is the case
+    the exact sum can be checked against a boolean."""
+    p = _p(wall_pot_liner=False)
     k = plan(p)
     soil = _soil_mesh(p)
     assert k["soil"] == pytest.approx(soil.volume / 1000.0, rel=0.02)
     assert k["reach"] == pytest.approx(soil.center_mass[0], abs=1.5)
-    assert k["reach"] > 0.0
-    assert any("ml of soil" in m and "N.m at the fixing" in m
-               for m in p.validate())
 
 
 def test_a_bigger_pot_is_a_bigger_moment():
@@ -342,13 +367,171 @@ def test_a_pot_too_short_to_get_a_back_under_the_cleat_says_so():
         _p(height=60.0).validate()
 
 
-def test_drainage_down_a_wall_is_argued_with_rather_than_forbidden():
-    p = _p(drainage_pattern="ring")
-    assert audit(build_wall_pot(p), p.overhang_limit_deg).overhang_faces == 0
-    assert any("waters the wall" in m for m in p.validate())
-    assert not any("waters the wall" in m for m in _p().validate())
-
-
 def test_the_parts_can_be_asked_for_one_at_a_time():
     for part in PARTS[2:]:
         assert _p(wall_pot=part).validate() is not None
+    with pytest.raises(ParameterError, match="needs wall_pot_liner on"):
+        _p(wall_pot="liner", wall_pot_liner=False).validate()
+
+
+# ---------------------------------------------------------------------------
+# the liner, and the open space under it
+# ---------------------------------------------------------------------------
+def _real_clash(a: trimesh.Trimesh, b: trimesh.Trimesh) -> float:
+    """Interference, not contact.  Two parts resting on each other share a
+    face, and an exact boolean hands that back as a zero-volume sliver."""
+    hit = _boolean("intersection", [a, b])
+    return sum(m.volume for m in hit.split(only_watertight=False)
+               if m.volume > 0.05)
+
+
+@pytest.mark.parametrize("style", STYLES)
+def test_the_liner_prints_standing_up_too(style):
+    p = _p(pot_style=style)
+    liner = build_wall_liner(p)
+    report = audit(liner, p.overhang_limit_deg)
+    assert liner.is_watertight and report.overhang_faces == 0, report
+    assert len(liner.split(only_watertight=False)) == 1
+    assert report.base_area_cm2 > 10.0
+
+
+def test_the_liner_is_thin_and_the_outer_is_not():
+    p = _p()
+    k = plan(p)
+    assert k["t_liner"] < k["t_wall"]
+    assert build_wall_liner(p).volume < 0.4 * build_wall_pot(p).volume
+
+
+@pytest.mark.parametrize("style", STYLES)
+def test_the_liner_drops_in_without_touching_the_sides(style):
+    p = _p(pot_style=style)
+    assert _real_clash(build_wall_pot(p), seated_liner(p)) < 1.0
+
+
+def test_it_lands_on_the_ledge_and_not_on_the_floor():
+    """Clearance everywhere is a liner that keeps going.  Drop it and the
+    ledge has to be what stops it - and the well has to survive."""
+    p = _p()
+    k = plan(p)
+    dropped = seated_liner(p)
+    dropped.apply_translation((0.0, 0.0, -2.0))
+    hit = _boolean("intersection", [build_wall_pot(p), dropped])
+    assert hit.volume > 500.0
+    assert hit.bounds[1][2] < k["z_seat"] + 1.0, "it is jamming on the wall"
+
+
+def test_the_well_under_it_is_open_space_and_is_reported():
+    p = _p()
+    k = plan(p)
+    assert k["well"] == pytest.approx(p.wall_pot_well)
+    assert k["z_seat"] == pytest.approx(k["prof"].floor_top_z + k["well"])
+    assert k["water"] > 50.0
+    assert k["r_well"] < k["r_seat"], "the ledge has nothing to stand on"
+    deeper = plan(_p(wall_pot_well=40.0))
+    assert deeper["water"] > k["water"] and deeper["soil"] < k["soil"]
+    assert any("the well under it holds" in m for m in p.validate())
+
+
+def test_the_step_in_the_outer_faces_the_sky():
+    """Well, then ledge, then the pot's own taper: the cavity only ever
+    gets wider going up, which is why none of it needs a cone."""
+    p = _p()
+    k = plan(p)
+    rings = W.outer_cavity_rings(p, k)
+    assert all(b[0] >= a[0] - 1e-9 for a, b in zip(rings, rings[1:]))
+    assert all(b[1] >= a[1] - 1e-9 for a, b in zip(rings, rings[1:]))
+    assert audit(build_wall_pot(p), p.overhang_limit_deg).overhang_faces == 0
+
+
+def test_the_well_reaches_the_back_plane_so_the_space_behind_the_liner_drains():
+    """Let the ledge close across the back and the gap behind the liner is
+    a blind pocket that fills and never empties."""
+    p = _p()
+    k = plan(p)
+    assert k["r_well"] > k["x_back"] - k["t_wall"]
+    space = _boolean("difference", [W.cavity_solid(p), seated_liner(p)])
+    assert len(space.split(only_watertight=False)) == 1, "the well is cut off"
+    assert space.bounds[0][2] == pytest.approx(k["prof"].floor_top_z, abs=0.5)
+
+
+# ---------------------------------------------------------------------------
+# what goes through the liner's floor
+# ---------------------------------------------------------------------------
+def test_the_holes_that_were_refused_on_the_outside_are_allowed_in_here():
+    p = _p()
+    r_floor = W._liner_floor_r(p)
+    sites = W.liner_hole_sites(p, r_floor)
+    assert len(sites) > 0
+    extra = (1 if p.wall_pot_wick else 0) + (1 if p.wall_pot_fill else 0)
+    assert audit(build_wall_liner(p), 45.0).genus == len(sites) + extra
+    assert audit(build_wall_liner(_p(drainage_pattern="none")),
+                 45.0).genus == extra
+    assert any("holes are what get water down to it" in m
+               for m in p.validate())
+
+
+def test_a_polygon_puts_its_holes_inside_its_flats_not_its_corners():
+    """The cavity's polyline is a CORNER radius.  Take it for the floor and
+    a square liner's outermost holes come out through a flat."""
+    for style in ("square", "hexagonal"):
+        p = _p(pot_style=style)
+        assert W.flat_factor(p) < 1.0
+        liner = build_wall_liner(p)
+        report = audit(liner, p.overhang_limit_deg)
+        assert liner.is_watertight and report.overhang_faces == 0, style
+        assert len(liner.split(only_watertight=False)) == 1
+        assert _real_clash(build_wall_pot(p), seated_liner(p)) < 1.0
+
+
+def test_the_standpipe_fills_the_well_without_wetting_the_soil():
+    p = _p()
+    k = plan(p)
+    r_floor = W._liner_floor_r(p)
+    cx, cy = W.fill_tube_centre(p, r_floor)
+    assert cx > 0.0 and cy == 0.0, "it stands at the front, clear of the back"
+    assert cx - W._TUBE_R - W._TUBE_T > -(k["x_back"] - k["x_liner"])
+    with_pipe, without = build_wall_liner(p), build_wall_liner(
+        _p(wall_pot_fill=False))
+    assert audit(with_pipe, 45.0).genus == audit(without, 45.0).genus + 1
+    assert any("the water standing in it IS the level" in m
+               for m in p.validate())
+    assert any("no overflow" in m for m in p.validate())
+
+
+def test_the_wick_is_what_makes_it_self_watering_rather_than_a_drip_tray():
+    p = _p()
+    assert audit(build_wall_liner(p), 45.0).genus == audit(
+        build_wall_liner(_p(wall_pot_wick=False)), 45.0).genus + 1
+    assert any("cord down the collar" in m and "cotton rots" in m
+               for m in p.validate())
+    assert any("nothing brings it back up" in m
+               for m in _p(wall_pot_wick=False).validate())
+
+
+def test_the_soil_sum_knows_the_standpipe_is_standing_in_it():
+    bare = plan(_p(wall_pot_fill=False, wall_pot_wick=False))
+    full = plan(_p())
+    assert full["soil"] < bare["soil"]
+    assert bare["soil"] - full["soil"] > 20.0
+
+
+# ---------------------------------------------------------------------------
+# guardrails on the liner
+# ---------------------------------------------------------------------------
+def test_liner_guardrails():
+    with pytest.raises(ParameterError, match="a puddle, not a reservoir"):
+        _p(wall_pot_well=4.0).validate()
+    with pytest.raises(ParameterError, match="leaves"):
+        _p(wall_pot_well=200.0).validate()
+    with pytest.raises(ParameterError, match="crescent rather than a pot"):
+        _p(wall_pot_round=0.50).validate()
+    with pytest.raises(ParameterError, match="one thing a wall pot must not"):
+        _p(num_side_holes=2).validate()
+
+
+def test_standing_the_liner_on_the_floor_is_allowed_and_argued_with():
+    p = _p(wall_pot_well=0.0)
+    assert plan(p)["water"] == 0.0
+    report = audit(build_wall_liner(p), p.overhang_limit_deg)
+    assert report.overhang_faces == 0, report
+    assert any("nothing drains anywhere" in m for m in p.validate())

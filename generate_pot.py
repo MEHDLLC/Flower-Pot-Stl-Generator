@@ -187,6 +187,16 @@ PARAMS = dict(
     #                           flat back has room to hide
     wall_pot_screws=0,        # 0 = as many as the pull-out needs
     wall_pot_screw_bore=4.5,  # the screw's shank
+    wall_pot_liner=True,      # a thin pot drops inside it, so the OUTER
+    #                           never needs a hole: drainage_pattern,
+    #                           num_drainage_holes and drainage_hole_radius
+    #                           point at the LINER, and what runs through
+    #                           them lands in the well and not on the wall
+    wall_pot_well=25.0,       # open space under the liner: the reservoir
+    wall_pot_liner_wall=1.6,  # how thin the liner is
+    wall_pot_fill=True,       # a standpipe: fills the well without wetting
+    #                           the soil, and shows the level
+    wall_pot_wick=True,       # a collar in the liner's floor for a cord
 
     # -- nursery sleeve (a cover for the pot the plant came in) --------------
     sleeve=False,             # the nursery pot drops in, pot and all.  A
