@@ -262,13 +262,20 @@ def build_pot(p: PotParams) -> trimesh.Trimesh:
     if p.jar_greenhouse:
         from .jar import seat_cutters
         cutters = cutters + seat_cutters(p, p.height)
-    bouquet_solids: list[trimesh.Trimesh] = []
+    added: list[trimesh.Trimesh] = []
     if p.bouquet:
         from .bouquet import bouquet_parts
-        bouquet_solids, bouquet_cutters = bouquet_parts(p)
+        added, bouquet_cutters = bouquet_parts(p)
         cutters = cutters + bouquet_cutters
-    if bouquet_solids:              # blooms first, then every cavity at once
-        pot = _boolean("union", [pot] + bouquet_solids)
+    if p.hang_loops:
+        # ears on the rim: added before the cutters so they get bored in the
+        # same pass, which is also what makes the genus count them
+        from .ceiling import loop_parts
+        ears, bores = loop_parts(p)
+        added = added + ears
+        cutters = cutters + bores
+    if added:                       # solids first, then every cavity at once
+        pot = _boolean("union", [pot] + added)
     if cutters:
         pot = _boolean("difference", [pot] + cutters)
 
@@ -284,8 +291,11 @@ def build_pot(p: PotParams) -> trimesh.Trimesh:
         pot = _boolean("union", [pot] + solids)
         pot = _boolean("difference", [pot] + stem_cutters)
 
-    # a fused stem grows past the mouth: don't recentre around it
-    return _finish(pot, center=not (p.stem and p.stem_mount == "printed"))
+    # a fused stem grows past the mouth, and three ears on a rim are not
+    # symmetric about the bounding box - neither should drag the pot's own
+    # axis off the origin, which is what everything else is measured from
+    return _finish(pot, center=not (p.hang_loops
+                                    or (p.stem and p.stem_mount == "printed")))
 
 
 def build_saucer(p: PotParams) -> trimesh.Trimesh:

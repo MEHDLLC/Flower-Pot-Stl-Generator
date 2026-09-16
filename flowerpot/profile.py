@@ -95,6 +95,15 @@ def wall_radius(p: PotParams, z: float) -> float:
     return r
 
 
+def outer_radius_at(prof: "Profiles", z: float) -> float:
+    """Nominal outside radius, rim included, at ``z`` - off the polyline."""
+    for (r0, z0), (r1, z1) in zip(prof.outer, prof.outer[1:]):
+        if z0 - 1e-9 <= z <= z1 + 1e-9:
+            t = (z - z0) / max(z1 - z0, 1e-9)
+            return r0 + (r1 - r0) * t
+    return prof.outer[-1][0]
+
+
 def check_vase_slope(p: PotParams) -> None:
     """A curve steeper than ~42 deg from vertical fails on BOTH surfaces (the
     outside where it widens, the inside where it narrows) - reject it with

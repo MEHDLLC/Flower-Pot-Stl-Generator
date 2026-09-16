@@ -69,7 +69,8 @@ from .hanger import (_CLEAT_BODY, _CLEAT_FIT, _CLEAT_RISE, _CLEAT_T, _G,
                      cleat_stress)
 from .modular import _prism_y
 from .params import ParameterError, PotParams
-from .profile import Profiles, build_profiles, resample
+from .profile import (Profiles, build_profiles, outer_radius_at,
+                      resample)
 from .sections import make_section
 from .textures import make_texture
 
@@ -104,13 +105,8 @@ _TUBE_T = 1.6
 # ---------------------------------------------------------------------------
 # the back plane
 # ---------------------------------------------------------------------------
-def outer_radius(prof, z: float) -> float:
-    """Nominal outside radius, rim included, at ``z``."""
-    for (r0, z0), (r1, z1) in zip(prof.outer, prof.outer[1:]):
-        if z0 - 1e-9 <= z <= z1 + 1e-9:
-            t = (z - z0) / max(z1 - z0, 1e-9)
-            return r0 + (r1 - r0) * t
-    return prof.outer[-1][0]
+#: shared with :mod:`flowerpot.ceiling` - both want the pot's own outline
+outer_radius = outer_radius_at
 
 
 def plan(p: PotParams) -> dict:

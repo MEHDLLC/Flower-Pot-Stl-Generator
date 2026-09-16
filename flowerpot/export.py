@@ -147,6 +147,10 @@ def export_pot(
                 jobs.append((build_hanger_rib, f"{name}_rib", not jobs))
             if params.hanger in ("yoke", "set"):
                 jobs.append((build_hanger_yoke, f"{name}_yoke", not jobs))
+    elif params.hang_ceiling_plate and params.hang_loops:
+        from .ceiling import build_ceiling_plate
+        jobs: list[tuple] = [(build_pot, f"{name}_pot", True),
+                             (build_ceiling_plate, f"{name}_ceiling", False)]
     elif params.wall_pot != "none":
         from .wallpot import build_wall_cleat, build_wall_pot
         jobs: list[tuple] = []

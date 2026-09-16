@@ -11,3 +11,4 @@ networkx>=3.0          # trimesh uses it for cross-sections
 # Tests only
 pytest>=7.0
 lxml>=4.9              # trimesh needs it to LOAD .3mf in the round-trip test
+pyyaml>=6.0            # ... and to read the workflows in test_workflows.py

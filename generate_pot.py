@@ -198,6 +198,20 @@ PARAMS = dict(
     #                           the soil, and shows the level
     wall_pot_wick=True,       # a collar in the liner's floor for a cord
 
+    # -- hanging loops (ears on the pot's own rim, and cord) -----------------
+    hang_loops=0,             # 2-6 ears on the rim, each with a VERTICAL
+    #                           hole through it for cord.  0 = none.  The
+    #                           cord carries the load - plastic creeps
+    #                           under a weight that never comes off and
+    #                           cord does not, which is the one thing no
+    #                           printed hanger can fix
+    hang_loop_bore=5.0,       # the hole, in mm
+    hang_ceiling_plate=False,  # also write a flat bar for the ceiling.  A
+    #                           steel screw hook is a better idea; what it
+    #                           goes into matters more than either
+    hang_plate_screws=2,
+    hang_plate_screw_bore=4.5,
+
     # -- nursery sleeve (a cover for the pot the plant came in) --------------
     sleeve=False,             # the nursery pot drops in, pot and all.  A
     #                           sleeve IS a pot: pot_style, surface_texture
