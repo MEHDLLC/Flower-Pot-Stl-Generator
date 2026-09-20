@@ -395,6 +395,31 @@ def test_the_liner_prints_standing_up_too(style):
     assert report.base_area_cm2 > 10.0
 
 
+def test_the_liner_has_a_back_so_it_can_be_carried_to_the_sink():
+    """The one thing you do with the liner is lift it out and tip it.
+
+    Its back is flat because the pot's back is flat, and for a long time
+    that flat was an opening: the shell was hollowed and then cut, so the
+    cut went through the cavity and left a crescent.  Standing in the pot it
+    looked right, because the pot's own back closed it.  Out of the pot it
+    poured the soil out along with the water.
+
+    Every horizontal slice of the liner must therefore enclose something.
+    """
+    liner = build_wall_liner(p_defaults := _p())
+    assert liner is not None and p_defaults is not None
+    low, high = liner.bounds[0][2], liner.bounds[1][2]
+    # Above the floor, which is solid, and below the rim.
+    for z in (low + 15.0, 0.5 * (low + high), high - 10.0):
+        section = liner.section(plane_origin=(0.0, 0.0, z),
+                                plane_normal=(0.0, 0.0, 1.0))
+        assert section is not None, f"no liner at z={z:.0f}"
+        walls = max(section.to_2D()[0].polygons_full, key=lambda q: q.area)
+        assert walls.interiors, (
+            f"the liner is open at z={z:.0f} mm - it would not hold soil "
+            f"once it is lifted out of the pot")
+
+
 def test_the_liner_is_thin_and_the_outer_is_not():
     p = _p()
     k = plan(p)

@@ -667,10 +667,17 @@ def build_wall_liner(p: PotParams) -> trimesh.Trimesh:
                             p.vertical_step,
                             section.extra_ring_heights(z0, z1 + 2.0), smooth),
                    section, decorate=False)
-    liner = _boolean("difference", [body, hollow])
     # the same flat back, set by the PAD rather than the wall: that is what
-    # keeps the liner clear of the thick part and leaves the gap behind it
-    liner = _boolean("difference", [liner, _back_box(k, p, k["x_liner"])])
+    # keeps the liner clear of the thick part and leaves the gap behind it.
+    # The CAVITY is cut a wall further in, so the flat back is a wall rather
+    # than an opening: cut the finished shell instead and the plane slices
+    # straight through the cavity, which leaves a crescent.  In the pot you
+    # cannot tell - the pot's own back closes it - but the liner comes out
+    # to be tipped, and a liner with no back tips the soil out with the
+    # water.
+    body = _boolean("difference", [body, _back_box(k, p, k["x_liner"])])
+    hollow = _boolean("difference", [hollow, _back_box(k, p, k["x_liner"] + t)])
+    liner = _boolean("difference", [body, hollow])
 
     floor_z = z0 + _LINER_FLOOR
     r_floor = _cav_r(prof, floor_z) - fit - t
