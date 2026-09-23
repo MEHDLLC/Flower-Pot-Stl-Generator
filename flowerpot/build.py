@@ -267,6 +267,13 @@ def build_pot(p: PotParams) -> trimesh.Trimesh:
         from .bouquet import bouquet_parts
         added, bouquet_cutters = bouquet_parts(p)
         cutters = cutters + bouquet_cutters
+    if p.holiday != "none" or p.holiday_face != "none":
+        # pointed ports through the wall: the same primitive the side
+        # drainage uses, and for the same reason.  The posts hold the liner
+        # off the floor so there is a well under it
+        from .holiday import face_cutters, well_posts
+        cutters = cutters + face_cutters(p)
+        added = added + well_posts(p)
     if p.hang_loops:
         # ears on the rim: added before the cutters so they get bored in the
         # same pass, which is also what makes the genus count them

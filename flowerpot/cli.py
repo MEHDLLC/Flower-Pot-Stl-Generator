@@ -84,6 +84,20 @@ def params_from_args(args: argparse.Namespace) -> PotParams:
     return PotParams.from_dict(data)
 
 
+def _default_name(params: PotParams) -> str:
+    """What to call the files when the caller did not say.
+
+    ``pot_style`` is the usual answer, but a holiday pot overrides the
+    style from its shape, so the style is not what anyone asked for -
+    ``pumpkin_classic`` is.
+    """
+    if params.holiday != "none":
+        face = ("" if params.holiday_face == "none"
+                else f"_{params.holiday_face}")
+        return f"{params.holiday}{face}"
+    return params.pot_style
+
+
 def _emit(p: PotParams, out: Path, name: str, args) -> bool:
     formats = ("stl", "3mf") if args.format == "both" else (args.format,)
     result = export_pot(
@@ -125,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
                 sp = params.with_(pot_style=style)
                 ok &= _emit(sp, out, args.name or style, args)
         else:
-            ok = _emit(params, out, args.name or params.pot_style, args)
+            ok = _emit(params, out, args.name or _default_name(params), args)
     except ParameterError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

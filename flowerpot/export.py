@@ -147,6 +147,11 @@ def export_pot(
                 jobs.append((build_hanger_rib, f"{name}_rib", not jobs))
             if params.hanger in ("yoke", "set"):
                 jobs.append((build_hanger_yoke, f"{name}_yoke", not jobs))
+    elif params.holiday != "none":
+        from .holiday import build_holiday_liner, build_holiday_pot, has_liner
+        jobs: list[tuple] = [(build_holiday_pot, f"{name}_pot", True)]
+        if has_liner(params):
+            jobs.append((build_holiday_liner, f"{name}_liner", False))
     elif params.hang_ceiling_plate and params.hang_loops:
         from .ceiling import build_ceiling_plate
         jobs: list[tuple] = [(build_pot, f"{name}_pot", True),

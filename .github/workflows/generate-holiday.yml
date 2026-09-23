@@ -1,0 +1,89 @@
+# Actions -> "Generate · holiday pot" -> Run workflow.
+# A pumpkin, a gourd or a cauldron, with a face cut right through it.
+# Every hole in the face is POINTED, because a round eye or a flat-topped
+# grin is a ceiling and a ceiling needs supports - which is the same
+# reason a carved pumpkin's grin has always had triangular teeth.
+# The set also writes a liner: a plain cone that drops in and holds the
+# soil back behind the face, standing on posts so it can still drain.
+name: "Generate · holiday pot"
+
+on:
+  workflow_dispatch:
+    inputs:
+      holiday:
+        description: "Shape"
+        type: choice
+        default: pumpkin
+        options: [pumpkin, gourd, cauldron]
+      holiday_face:
+        description: "Face carved through the wall"
+        type: choice
+        default: classic
+        options: [classic, cat, angry, kawaii, none]
+      holiday_face_scale:
+        description: "How big the face is (1 = as drawn)"
+        type: string
+        default: "1.0"
+      holiday_liner:
+        description: "Also write the liner that hides the soil behind the face"
+        type: boolean
+        default: true
+      holiday_liner_holes:
+        description: "Drainage holes - in the LINER, never in the face"
+        type: string
+        default: "4"
+      holiday_lobes:
+        description: "Lobes around it (0 = whatever the shape asks for)"
+        type: string
+        default: "0"
+      height:
+        description: "Pot height in mm (a pumpkin wants about 0.7x the mouth)"
+        type: string
+        default: "105"
+      top_diameter:
+        description: "Across the widest point in mm"
+        type: string
+        default: "150"
+      bottom_diameter:
+        description: "Across the base in mm"
+        type: string
+        default: "105"
+      drainage_pattern:
+        description: "Drainage (set none and the well becomes a reservoir)"
+        type: choice
+        default: ring
+        options: [ring, none, center, grid]
+      surface_texture:
+        description: "Relief pressed into the wall"
+        type: choice
+        default: none
+        options: [none, herringbone, honeycomb, diamonds, waves]
+      color:
+        description: "Color (palette name or #RRGGBB hex)"
+        type: string
+        default: "#e8752a"
+      extra_args:
+        description: "Extra CLI flags (see README)"
+        type: string
+        default: ""
+
+jobs:
+  holiday:
+    uses: ./.github/workflows/generate-common.yml
+    with:
+      title: "Holiday pot: ${{ inputs.holiday }}, ${{ inputs.holiday_face }} face"
+      artifact: "holiday-${{ inputs.holiday }}-${{ inputs.holiday_face }}"
+      cli_args: >-
+        --holiday ${{ inputs.holiday }}
+        --holiday-face ${{ inputs.holiday_face }}
+        --holiday-face-scale ${{ inputs.holiday_face_scale }}
+        --${{ inputs.holiday_liner == false && 'no-' || '' }}holiday-liner
+        --holiday-liner-holes ${{ inputs.holiday_liner_holes }}
+        --holiday-lobes ${{ inputs.holiday_lobes }}
+        --height ${{ inputs.height }}
+        --top-diameter ${{ inputs.top_diameter }}
+        --bottom-diameter ${{ inputs.bottom_diameter }}
+        --drainage-pattern ${{ inputs.drainage_pattern }}
+        --surface-texture ${{ inputs.surface_texture }}
+        --color ${{ inputs.color }}
+        ${{ inputs.extra_args }}

@@ -50,6 +50,12 @@ VASE_CURVES: dict[str, list[tuple[float, float]]] = {
     "bottle": [(0.0, 0.85), (0.32, 1.08), (0.52, 1.02), (0.80, 0.40),
                (0.90, 0.38), (1.0, 0.42)],
     "cone": [(0.0, 0.45), (1.0, 1.0)],
+    # a squat sphere: wider than it is tall, widest just over half way, and
+    # a mouth narrower than its belly.  The foot and the shoulder are the
+    # steep parts, so the control points are spread to keep both inside the
+    # overhang budget at the proportions a pumpkin actually wants
+    "pumpkin": [(0.0, 0.66), (0.16, 0.82), (0.34, 0.95), (0.52, 1.00),
+                (0.70, 0.96), (0.86, 0.86), (1.0, 0.76)],
     # a trumpet: pinched at the waist, opening back out to a broad mouth.
     # The bouquet planter defaults to it - the ring of blooms needs a wide
     # shoulder to stand on
