@@ -15,7 +15,8 @@ overhangs *before* it is written to disk. Runs locally or straight from a
 [rim & saucer](#parameters) · [colors](#colors-and-formats) ·
 [self-watering set](#self-watering-set) · [reservoir insert](#universal-reservoir-insert) ·
 [hydroponic tower](#hydroponic-tower) · [jar greenhouse](#mason-jar-greenhouse) ·
-[modular garden](#modular-garden)
+[modular garden](#modular-garden) ·
+[holiday pots](#holiday-pots-a-shape-with-a-season-and-a-face-through-it)
 
 ---
 
@@ -546,6 +547,117 @@ python -m flowerpot --hanger set --hanger-mount wall --hanger-reach 150
 python -m flowerpot --hanger set --hanger-mount wall --hanger-load 10 \
     --hanger-cleat-length 200
 python -m flowerpot --hanger rib --hanger-mount wall   # just print one more
+```
+
+## Holiday pots: a shape with a season, and a face through it
+
+![the shapes](docs/img/holiday.png)
+
+`--holiday pumpkin` is a squat lobed sphere that stands on its own lobes, and
+`--holiday-face classic` cuts a jack-o'-lantern straight through the wall. The
+set writes two parts: the **pot**, and a **liner** that drops in and holds the
+soil back behind the face.
+
+![the four faces](docs/img/holiday-faces.png)
+
+```bash
+python -m flowerpot --holiday pumpkin --holiday-face classic \
+    --height 105 --top-diameter 150 --bottom-diameter 105 --color '#e8752a'
+```
+
+Three shapes, four faces, and the shapes want different proportions —
+`pumpkin` about 0.7 times as tall as it is wide, `cauldron` 0.75, `gourd` 1.3.
+Ask for the wrong one and the generator says which height would fix it rather
+than quietly building something that leans.
+
+### Nothing here is a new kind of geometry
+
+That is the whole point of the module. A holiday shape is a **silhouette**, a
+**rib count** and a **rib depth with the twist turned off** — parameters the
+generator already had. So a pumpkin is a `ribbed_spiral` pot at zero twist, and
+every texture, colour, drainage pattern and style option still works on it.
+
+The lobes matter twice. `ribbed_spiral` adds its ribs *outside* the nominal
+wall rather than carving them into it, so the pot is never thinner for having
+lobes; and with `base_flat` off they run all the way to the bed, so the pot
+stands on eight little pads of its own — which is what a pumpkin does.
+
+### Every hole in the face is pointed, and that is not a compromise
+
+A round eye is a ceiling. A flat-topped grin is a ceiling. A ceiling over a
+hole in a vertical wall needs supports, which is exactly why the side drainage
+ports in this generator are diamonds and not circles.
+
+So every feature of a face here is a **pointed port** — a prism whose roof
+comes to a peak, two faces inside the overhang budget instead of one flat span
+across the top. The roofs rise 1.35 per unit of half width, about 53°, against
+a 45° budget.
+
+None of that costs the look, because **a carved pumpkin was always this
+shape**. Its grin is a row of pointed cells; the triangles of material between
+the gaps are the teeth, and the gaps come to a point because the teeth do.
+Carve the classic face and you have carved a printable one.
+
+The teeth point **up**, always, and that direction is the one real constraint.
+A tooth hanging down from the top of the mouth starts, layer by layer, as a
+speck of plastic in mid-air with nothing under it. A tooth standing up off the
+bottom of the mouth only ever narrows as it rises. So the mouth is a row of
+gaps pointed at the top, and the eyes and nose are triangles standing on a flat
+base — the base faces up, so it is free.
+
+### How you know the face came out
+
+The pot's **genus** has to equal its drainage holes plus one per port. A blind
+pocket adds nothing to the genus and a through hole adds exactly one, so the
+count is an exact statement that every feature went all the way through and
+that no two of them ran together.
+
+It is not a theoretical check. It caught two real bugs here, both invisible in
+a render:
+
+* the grin's cells overlapped, so five gaps came out as one slot with no teeth
+  in it — the genus was four short;
+* the cutters were cut to the **rim's** radius, and every one of these shapes
+  has a belly wider than its mouth, so three ports stopped inside the wall and
+  left blind pockets that look like holes from the inside.
+
+`holiday_face_scale` sizes the face, and the generator refuses a face whose
+holes would run into each other, whose roof would drop under the budget, or
+that would reach into the floor or break the rim. The thinnest tooth it will
+leave is 2.4 mm.
+
+### The liner, and the number nobody would guess
+
+A face cut right through is a hole into the soil. The liner is a plain tapered
+cup that drops in and holds the soil back.
+
+It has to be a **cone**, not a copy of the cavity: the pot's mouth is narrower
+than its belly, so nothing belly-shaped would go in through it. That leaves a
+gap between the liner and the wall — which is the right thing to see through a
+jack-o'-lantern's eyes anyway.
+
+It stands on four **posts** on the pot's floor, 22 mm up, so its drainage holes
+are not pressed flat against the floor. Posts rather than a shelf or feet, for a
+reason worth stating: a post is vertical on every side and flat on top, so it
+adds no overhang anywhere. A shelf around the cavity would need chamfering
+underneath, and feet on the *liner* would not work at all — feet hold a floor up
+in the air, and that floor is a ceiling to whatever prints under it.
+
+**All the drainage is in the liner.** The pot itself keeps its own base holes,
+but nothing is ever cut into the face pot for water — the face is hole enough.
+
+And the number: the lowest hole in the face is the **waterline**. Fill past it
+and it runs down the outside. For the default pumpkin that is about 246 ml of
+free space, counting the posts and the liner as the obstructions they are. The
+well under the liner is about 215 ml — with the pot's own drainage on that is
+clearance and the water runs through; set `--drainage-pattern none` and it is a
+reservoir instead.
+
+```bash
+python -m flowerpot --holiday cauldron --holiday-face angry --height 112
+python -m flowerpot --holiday gourd --holiday-face cat --height 170 \
+    --top-diameter 130 --bottom-diameter 95
+python -m flowerpot --holiday pumpkin --holiday-face none   # a plain lobed pot
 ```
 
 ## Hanging pot: loops on the rim
@@ -1441,6 +1553,13 @@ raked-soil lid, written as `<name>_soil_cap.*`).
 **Hanging loops** — `hang_loops` (0 = none, else 2-6), `hang_loop_bore` (5.0),
 `hang_ceiling_plate` (False), `hang_plate_screws` (2), `hang_plate_screw_bore`
 (4.5). Every pot parameter applies too.
+
+**Holiday pots** — `holiday` (`"none"` | `"pumpkin"` | `"gourd"` |
+`"cauldron"`), `holiday_face` (`"none"` | `"classic"` | `"cat"` | `"angry"` |
+`"kawaii"`), `holiday_face_scale` (1.0), `holiday_lobes` (0 = whatever the
+shape asks for), `holiday_lobe_depth` (0.0 = derive), `holiday_liner` (True),
+`holiday_liner_holes` (4). Every pot parameter applies too, and the drainage
+ones apply to the *liner* — nothing is ever cut into the face pot for water.
 
 **Wall pot** — `wall_pot` (`"none"` | `"set"` | `"pot"` | `"cleat"`),
 `wall_pot_round` (0.0 = as flat as the pot allows), `wall_pot_rail` (0.0 =

@@ -34,7 +34,7 @@ DRAINAGE_PATTERNS = ("center", "ring", "grid", "none")
 #: Vase silhouettes: named wall curves that replace the straight taper.
 #: Implementations live in :mod:`flowerpot.profile`.
 VASE_PROFILES = ("none", "classic", "bud", "gourd", "bottle", "cone",
-                 "wave", "bouquet")
+                 "wave", "bouquet", "pumpkin")
 
 #: Relief textures that can be pressed into the outside of the wall.  They
 #: are independent of ``pot_style`` (except low_poly_faceted, whose sparse
@@ -400,20 +400,6 @@ class PotParams:
     #                                  as the flat back has room for
     wall_pot_screws: int = 0         # 0 = as many as the pull-out needs
     wall_pot_screw_bore: float = 4.5  # the screw's shank
-
-    # ------------------------------------------------------------------
-    # 5o. Hanging loops (ears on the pot's own rim, and cord)
-    # ------------------------------------------------------------------
-    hang_loops: int = 0              # 2-6 ears on the rim, each with a
-    #                                  VERTICAL hole through it for cord.
-    #                                  0 = none. The cord carries the load,
-    #                                  which is the one thing no printed
-    #                                  hanger can do - plastic creeps.
-    hang_loop_bore: float = 5.0      # the hole, in mm
-    hang_ceiling_plate: bool = False  # also write a flat bar to screw to
-    #                                  the ceiling, with an eye in it
-    hang_plate_screws: int = 2
-    hang_plate_screw_bore: float = 4.5
     wall_pot_liner: bool = True      # a thin pot that drops inside it. The
     #                                  OUTER then gets no holes at all -
     #                                  drainage_pattern, num_drainage_holes
@@ -432,6 +418,41 @@ class PotParams:
     #                                  floor for a wicking cord, so the well
     #                                  waters the plant instead of just
     #                                  catching what it drops
+
+    # ------------------------------------------------------------------
+    # 5o. Hanging loops (ears on the pot's own rim, and cord)
+    # ------------------------------------------------------------------
+    hang_loops: int = 0              # 2-6 ears on the rim, each with a
+    #                                  VERTICAL hole through it for cord.
+    #                                  0 = none. The cord carries the load,
+    #                                  which is the one thing no printed
+    #                                  hanger can do - plastic creeps.
+    hang_loop_bore: float = 5.0      # the hole, in mm
+    hang_ceiling_plate: bool = False  # also write a flat bar to screw to
+    #                                  the ceiling, with an eye in it
+    hang_plate_screws: int = 2
+    hang_plate_screw_bore: float = 4.5
+
+    # ------------------------------------------------------------------
+    # 5p. Holiday pots (a shape with a season, and a face through it)
+    # ------------------------------------------------------------------
+    holiday: str = "none"            # "pumpkin" | "gourd" | "cauldron".
+    #                                  A holiday pot IS a pot: the shape is
+    #                                  a silhouette and a rib count the
+    #                                  generator already has, so textures,
+    #                                  colours and drainage all still work.
+    holiday_face: str = "none"       # "classic" | "cat" | "angry" |
+    #                                  "kawaii". Every hole is POINTED: a
+    #                                  round eye or a flat-topped grin is a
+    #                                  ceiling and needs supports.
+    holiday_face_scale: float = 1.0   # how big the face is, against a size
+    #                                  taken from the pot itself
+    holiday_lobes: int = 0           # 0 = whatever the shape asks for
+    holiday_lobe_depth: float = 0.0   # mm the lobes stand proud; 0 = derive
+    holiday_liner: bool = True       # a plain cup that drops in and holds
+    #                                  the soil back behind the face
+    holiday_liner_holes: int = 4     # drainage in the LINER, never in the
+    #                                  pot - the face is hole enough
 
     # ------------------------------------------------------------------
     # 5l. Nursery pot sleeve (a cover for the pot the plant came in)
@@ -856,6 +877,18 @@ class PotParams:
                 raise ParameterError(
                     "hanger is its own set - it does not combine with the "
                     "pots or the other product flags")
+        if self.holiday != "none" or self.holiday_face != "none":
+            from .holiday import check_holiday
+            warn += check_holiday(self)
+            if (self.wall_pot != "none" or self.hanger != "none"
+                    or self.sleeve or self.cradle != "none"
+                    or self.moss_pole != "none" or self.underpot != "none"
+                    or self.replica != "none" or self.hydro_tower
+                    or self.modular_kit != "none" or self.bouquet
+                    or self.jar_greenhouse):
+                raise ParameterError(
+                    "a holiday pot is a pot in its own right - it does not "
+                    "combine with the mounts or the other product flags")
         if self.hang_loops or self.hang_ceiling_plate:
             from .ceiling import check_ceiling
             warn += check_ceiling(self)

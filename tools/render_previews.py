@@ -632,6 +632,30 @@ def ceiling_figure(out: Path) -> None:
               out / "hangloops-parts.png", elev=-14.0, azim=-64.0)
 
 
+def holiday_figure(out: Path) -> None:
+    from flowerpot.holiday import (SHAPES, FACES, build_holiday_liner,
+                                   build_holiday_pot)
+    DIMS = {"pumpkin": dict(top_diameter=150.0, bottom_diameter=105.0,
+                            height=105.0),
+            "gourd": dict(top_diameter=130.0, bottom_diameter=95.0,
+                          height=170.0),
+            "cauldron": dict(top_diameter=150.0, bottom_diameter=110.0,
+                             height=112.0)}
+
+    def pot(shape: str, face: str) -> PotParams:
+        return PotParams(**DIMS[shape], holiday=shape, holiday_face=face,
+                         color="#e8752a", **FAST)
+
+    mesh_grid([(f"{s} + classic", build_holiday_pot(pot(s, "classic")),
+                "#e8752a") for s in SHAPES[1:]]
+              + [("the liner it stands over",
+                  build_holiday_liner(pot("pumpkin", "classic")), "sage")],
+              out / "holiday.png", elev=12.0, azim=-28.0)
+    mesh_grid([(f, build_holiday_pot(pot("pumpkin", f)), "#e8752a")
+               for f in FACES[1:]],
+              out / "holiday-faces.png", elev=6.0, azim=-18.0)
+
+
 def main(outdir: str = "docs/img") -> None:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -658,6 +682,7 @@ def main(outdir: str = "docs/img") -> None:
     hitch_figure(out)
     yard_figure(out)
     yard_parts_figure(out)
+    holiday_figure(out)
     yard_hands_figure(out)
     replica_figure(out)
     cradle_figure(out)
