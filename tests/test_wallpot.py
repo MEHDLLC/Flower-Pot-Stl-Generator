@@ -395,6 +395,26 @@ def test_the_liner_prints_standing_up_too(style):
     assert report.base_area_cm2 > 10.0
 
 
+def _loop_area(loop) -> float:
+    """Shoelace, in the XY plane."""
+    x, y = loop[:, 0], loop[:, 1]
+    return 0.5 * abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
+
+
+def _loop_contains(loop, point) -> bool:
+    """Crossing number - a point-in-polygon test in numpy.
+
+    Written out rather than handed to shapely, because shapely is not
+    installed on CI and a test that skips itself there is not a test.
+    """
+    x, y = loop[:, 0], loop[:, 1]
+    x2, y2 = np.roll(x, -1), np.roll(y, -1)
+    straddles = (y > point[1]) != (y2 > point[1])
+    with np.errstate(divide="ignore", invalid="ignore"):
+        crossing_x = x + (point[1] - y) * (x2 - x) / (y2 - y)
+    return bool(np.count_nonzero(straddles & (point[0] < crossing_x)) % 2)
+
+
 def test_the_liner_has_a_back_so_it_can_be_carried_to_the_sink():
     """The one thing you do with the liner is lift it out and tip it.
 
@@ -404,18 +424,24 @@ def test_the_liner_has_a_back_so_it_can_be_carried_to_the_sink():
     looked right, because the pot's own back closed it.  Out of the pot it
     poured the soil out along with the water.
 
-    Every horizontal slice of the liner must therefore enclose something.
+    Every horizontal slice of the liner must therefore enclose something:
+    its widest loop has to have another loop inside it.  A crescent's
+    widest loop is the crescent's own outline, and the cavity is outside
+    it - which is the whole difference, and is why this is the check
+    rather than a volume or a watertightness one, both of which the
+    crescent passed.
     """
-    liner = build_wall_liner(p_defaults := _p())
-    assert liner is not None and p_defaults is not None
+    liner = build_wall_liner(_p())
     low, high = liner.bounds[0][2], liner.bounds[1][2]
     # Above the floor, which is solid, and below the rim.
     for z in (low + 15.0, 0.5 * (low + high), high - 10.0):
         section = liner.section(plane_origin=(0.0, 0.0, z),
                                 plane_normal=(0.0, 0.0, 1.0))
         assert section is not None, f"no liner at z={z:.0f}"
-        walls = max(section.to_2D()[0].polygons_full, key=lambda q: q.area)
-        assert walls.interiors, (
+        loops = [np.asarray(loop)[:, :2] for loop in section.discrete]
+        outer = max(loops, key=_loop_area)
+        assert any(_loop_contains(outer, loop[0])
+                   for loop in loops if loop is not outer), (
             f"the liner is open at z={z:.0f} mm - it would not hold soil "
             f"once it is lifted out of the pot")
 
