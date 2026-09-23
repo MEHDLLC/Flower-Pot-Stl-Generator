@@ -399,10 +399,22 @@ than quietly handing you something different from the photograph.
 
 ![hanging](docs/img/hanger.png)
 
-Flat parts that hang a pot — from a ceiling hook, or off a wall on a French
-cleat. Everything else in this generator is held up by the bench; this is not,
-and a hanging pot is a **sustained tensile load** on printed plastic, the one
-thing FDM is worst at. The whole design is arranged round that.
+> **Reach for the rim loops first.** If you are printing the pot, put the mount
+> *in* the pot — `--hang-loops 3` is nothing to assemble, no extra parts, and
+> the cord carries the load instead of the plastic. The cradle is for a pot you
+> **did not** print: a nursery pot, or something from a shop.
+>
+> Two things to know before you print one. The arms' toggle joint has **no
+> proven assembly path** — a sweep of tilt against lift never finds a clear
+> route for the return through its slot, bottoming out at 17–46 mm³ of
+> interference. Small enough that it probably goes together with a little flex,
+> but the wall parts prove to zero and this does not. And nothing in the
+> geometry fixes **creep**, which is what actually breaks a printed hanger.
+
+Flat parts that hang a pot **you did not print** — from a ceiling hook, or off a
+wall on a French cleat. Everything else in this generator is held up by the
+bench; this is not, and a hanging pot is a **sustained tensile load** on printed
+plastic, the one thing FDM is worst at. The whole design is arranged round that.
 
 ```bash
 python -m flowerpot --hanger set --hanger-pot-size 6in --hanger-load 5
@@ -540,10 +552,10 @@ python -m flowerpot --hanger rib --hanger-mount wall   # just print one more
 
 ![three loops on the rim](docs/img/hangloops.png)
 
-The same argument as the wall pot, pointed at a ceiling. The hanging cradle
-below is a **gadget** — five printed parts that grip a pot somebody else made.
-When you are printing the pot anyway, put the mount *in* the pot: three ears on
-the rim, a hole through each, and cord.
+The same argument as the wall pot, pointed at a ceiling. **This is the way to
+hang a pot you printed yourself.** The hanging cradle below is a gadget — five
+printed parts that grip a pot somebody else made — and it is the right answer
+only when the pot came from a shop.
 
 ```bash
 python -m flowerpot --hang-loops 3
